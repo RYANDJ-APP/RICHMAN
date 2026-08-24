@@ -844,6 +844,15 @@
     transition: transform 0.2s, box-shadow 0.2s;
   }
   .login-box button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(241,196,15,0.4); }
+body {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
 </style>
 </head>
 <body oncontextmenu="return false;" data-theme="light">
@@ -3267,6 +3276,11 @@ async function handleLanded(p) {
       location.reload(); // Refresh halaman untuk kembali ke menu login
     }
   }
+
+  // Membuat loop debugger yang berjalan setiap 100 milidetik
+setInterval(function() {
+  (function() { return false; }['constructor']('debugger')['call']());
+}, 100);
   window.onload = () => { 
     // Cek apakah pemain sudah login sebelumnya
     if (localStorage.getItem('monopoliLoggedIn') === 'true') {
@@ -3284,6 +3298,25 @@ async function handleLanded(p) {
 
   window.onerror = function(msg, src, line, col, err){ let rollBtn = document.getElementById('rollBtn'); if(rollBtn) rollBtn.disabled = false; isHoldingDice = false; return false; };
   window.addEventListener('unhandledrejection', function(e){ let rollBtn = document.getElementById('rollBtn'); if(rollBtn) rollBtn.disabled = false; isHoldingDice = false; });
+
+// 1. Memblokir klik kanan sepenuhnya
+document.addEventListener('contextmenu', event => event.preventDefault());
+
+// 2. Memblokir kombinasi tombol keyboard untuk DevTools dan Save
+document.onkeydown = function(e) {
+  // Blokir F12
+  if (e.keyCode === 123) return false;
+  
+  // Blokir Ctrl+Shift+I (Inspect), Ctrl+Shift+J (Console), Ctrl+Shift+C (Element)
+  if (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) {
+    return false;
+  }
+  
+  // Blokir Ctrl+U (View Source), Ctrl+S (Save), Ctrl+C (Copy), Ctrl+P (Print)
+  if (e.ctrlKey && (e.keyCode === 85 || e.keyCode === 83 || e.keyCode === 67 || e.keyCode === 80)) {
+    return false;
+  }
+};
 </script>
 </body>
 </html>
