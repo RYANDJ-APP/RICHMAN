@@ -853,6 +853,60 @@ body {
   user-select: none;
   -webkit-user-drag: none;
 }
+
+/* --- WATERMARK HEADER --- */
+  .header-watermark {
+    font-size: 12pt;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.7); /* Warna putih semi transparan */
+    margin-right: 15px;
+    letter-spacing: 1px;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+    pointer-events: none; /* Tidak mengganggu klik */
+    user-select: none;
+  }
+
+  /* --- WATERMARK KELILING PAPAN --- */
+  .watermark-edge {
+    position: absolute;
+    font-size: 12pt;
+    font-weight: 900;
+    color: rgba(255, 255, 255, 0.25); /* Transparan samar agar tidak menutupi petak */
+    pointer-events: none; 
+    user-select: none;
+    white-space: nowrap;
+    z-index: 50; /* Berada di atas petak */
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* Menyesuaikan warna watermark saat menggunakan tema Terang (Light Mode) */
+  body[data-theme="light"] .watermark-edge {
+    color: rgba(0, 0, 0, 0.25);
+  }
+
+  /* Posisi 4 sisi presisi di pinggir dalam papan */
+  .edge-top {
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .edge-bottom {
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .edge-left {
+    left: -150px; /* Sesuaikan angka ini agar pas dengan tinggi papan */
+    top: 50%;
+    transform: translateY(-50%) rotate(-90deg);
+  }
+  .edge-right {
+    right: -150px; /* Sesuaikan angka ini agar pas dengan tinggi papan */
+    top: 50%;
+    transform: translateY(-50%) rotate(90deg);
+  }
+
 </style>
 </head>
 <body oncontextmenu="return false;" data-theme="light">
@@ -1152,6 +1206,9 @@ body {
       <button class="toolbar-btn btn-assets-external" style="background:#6c5ce7;" onclick="openSessionModal()">💾 Sesi</button>
     </div>
     <div class="toolbar-center">
+      <!-- Watermark Header Ditambahkan Di Sini -->
+      <span class="header-watermark">Di Desain dan Dikembangkan oleh RIANDY, S.Kep</span>
+      
       <button class="toolbar-btn btn-3d-toggle" id="btn3D" onclick="toggle3DView()">🗺️ View 3D Waze</button>
     </div>
     <div class="toolbar-right">
@@ -1169,11 +1226,19 @@ body {
 
   <div class="board-container-3d" id="boardContainer3D">
     <div class="board" id="board">
+    
+      <!-- 4 Watermark Keliling Ditambahkan Di Sini -->
+      <div class="watermark-edge edge-top">Di Desain dan Dikembangkan oleh RIANDY, S.Kep</div>
+      <div class="watermark-edge edge-bottom">Di Desain dan Dikembangkan oleh RIANDY, S.Kep</div>
+      <div class="watermark-edge edge-left">Di Desain dan Dikembangkan oleh RIANDY, S.Kep</div>
+      <div class="watermark-edge edge-right">Di Desain dan Dikembangkan oleh RIANDY, S.Kep</div>
+
+      <!-- Area tengah dan petak-petak (cell) papan Anda tetap di bawah sini... -->
       <div class="center-area">
         <!-- Visual Tumpukan Kartu di Tengah Papan (Kanan Atas & Kiri Bawah Menghadap Penjara) -->
         <div class="deck-card deck-chance">KARTU<br>KESEMPATAN</div>
         <div class="deck-card deck-community">DANA<br>UMUM</div>
-        
+
         <h3 class="center-title">GILIRAN PEMAIN</h3>
         <div class="scoreboard-center" id="scoreboardCenter"></div>
         <div class="roll-below-player" id="rollBelowPlayer">
