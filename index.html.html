@@ -1414,7 +1414,8 @@
   function logError(msg){
     try {
       let el = document.getElementById('errorLog');
-      if(el){ el.style.display='block'; el.innerText = "Error: " + msg + "\n" + new Date().toLocaleTimeString(); setTimeout(()=>{ el.style.display='none'; }, 5000); }
+      if(el){ el.style.display='block'; el.innerText = "Error: " + msg + "
+" + new Date().toLocaleTimeString(); setTimeout(()=>{ el.style.display='none'; }, 5000); }
       console.error(msg);
     } catch(e){}
   }
@@ -1716,7 +1717,7 @@
     }
   }
 
-  // Integrasikan reset zoom ketika orientasi perangkat berubah
+  // Integrasikan reset zoom setiap kali layar diputar
   window.addEventListener('orientationchange', () => { 
     setTimeout(() => {
       fitToDesktop();
@@ -2143,7 +2144,8 @@
 
       let contentHTML = "";
       if(data.type === 'corner') {
-        contentHTML = `<div class="corner-inner ${data.class}">${data.name.replace('\n','<br>')}<div class="cell-landmark">${data.landmark||''}</div></div>`;
+        contentHTML = `<div class="corner-inner ${data.class}">${data.name.replace('
+','<br>')}<div class="cell-landmark">${data.landmark||''}</div></div>`;
       } else {
         let colorHTML = data.color ? `<div class="color-bar" style="background:${data.color}"></div>` : `<div class="color-bar empty" style="background:transparent; border:none !important;"></div>`;
         let singleIcon = data.landmark || data.icon || '';
@@ -2346,7 +2348,8 @@
 
     let hasMortgaged = gameState.boardData.some(c => c.owner === cp.id && c.mortgaged);
     if(!hasMortgaged && cp.bankLoan <= 0) { 
-        await showEventModal("Pinjaman Bank Ditolak", `${cp.name}, Anda belum memenuhi syarat.\nAnda wajib melakukan gadai aset terlebih dahulu sebelum dapat mengajukan pinjaman bank!`, "🏦", [{text: "Tutup", type: "btn-red"}], "#d63031"); return; 
+        await showEventModal("Pinjaman Bank Ditolak", `${cp.name}, Anda belum memenuhi syarat.
+Anda wajib melakukan gadai aset terlebih dahulu sebelum dapat mengajukan pinjaman bank!`, "🏦", [{text: "Tutup", type: "btn-red"}], "#d63031"); return; 
     }
 
     let maxLoan = cp.initialModal; // Batas Pinjaman: Maksimal sama dengan modal awal
@@ -2369,7 +2372,12 @@
         loanButtons.unshift({text: `Pinjam Limit Sisa (${formatRupiah(maxLoan - currentDebt)})`, type: "btn-green", value: "borrow"});
     }
 
-    let loanChoice = await showEventModal("Fasilitas Bank (Utang & Cicilan)", `Status Finansial ${cp.name}:\n\n- Kekayaan Bersih: ${formatRupiah(netAssets)}\n- Saldo Tunai: ${formatRupiah(cp.money)}\n- Utang Bank saat ini: ${formatRupiah(currentDebt)}\n- Sisa Limit Pinjaman: ${formatRupiah(maxLoan - currentDebt)}`, "🏦", loanButtons, "#8e44ad");
+    let loanChoice = await showEventModal("Fasilitas Bank (Utang & Cicilan)", `Status Finansial ${cp.name}:
+
+- Kekayaan Bersih: ${formatRupiah(netAssets)}
+- Saldo Tunai: ${formatRupiah(cp.money)}
+- Utang Bank saat ini: ${formatRupiah(currentDebt)}
+- Sisa Limit Pinjaman: ${formatRupiah(maxLoan - currentDebt)}`, "🏦", loanButtons, "#8e44ad");
 
     if(loanChoice === 'borrow') {
       let borrowAmount = maxLoan - currentDebt;
@@ -2377,7 +2385,8 @@
       cp.bankLoan += borrowAmount;
       triggerExpressionAndSpeak('joy', `${cp.name} berhasil mencairkan sisa limit pinjaman bank sebesar ${formatRupiah(borrowAmount)}.`);
       updateUI(); saveLocalState();
-      await showEventModal("Pinjaman Dicairkan", `Dana pinjaman sebesar ${formatRupiah(borrowAmount)} telah dimasukkan ke saldo ${cp.name}.\nSaldo utang bank kini: ${formatRupiah(cp.bankLoan)}`, "💵", [{text: "Selesai", type: "btn-green"}]);
+      await showEventModal("Pinjaman Dicairkan", `Dana pinjaman sebesar ${formatRupiah(borrowAmount)} telah dimasukkan ke saldo ${cp.name}.
+Saldo utang bank kini: ${formatRupiah(cp.bankLoan)}`, "💵", [{text: "Selesai", type: "btn-green"}]);
     } else if (loanChoice === 'pay') {
       let payAmount = Math.min(cp.money, currentDebt);
       if(payAmount <= 0) {
@@ -2387,7 +2396,8 @@
       cp.bankLoan -= payAmount;
       triggerExpressionAndSpeak('joy', `${cp.name} membayar cicilan utang bank sebesar ${formatRupiah(payAmount)}.`);
       updateUI(); saveLocalState();
-      await showEventModal("Pembayaran Berhasil", `Berhasil membayar utang sebesar ${formatRupiah(payAmount)}.\nSisa utang bank: ${formatRupiah(cp.bankLoan)}`, "💸", [{text: "Selesai", type: "btn-green"}]);
+      await showEventModal("Pembayaran Berhasil", `Berhasil membayar utang sebesar ${formatRupiah(payAmount)}.
+Sisa utang bank: ${formatRupiah(cp.bankLoan)}`, "💸", [{text: "Selesai", type: "btn-green"}]);
     }
     checkBankruptPolicy(cp); // Validasi lagi setelah transaksi
   }
@@ -2395,7 +2405,8 @@
   async function openGetOutCardModal() {
     let cp = gameState.players[gameState.turnIndex]; let totalCards = (cp.getOutCards.chance || 0) + (cp.getOutCards.community || 0);
     if(totalCards <= 0) { await showEventModal("Kartu Bebas Penjara", `${cp.name}, Anda tidak memiliki Kartu Bebas Penjara saat ini.`, "🎫", [{text: "Tutup", type: "btn-blue"}], "#e17055"); return; }
-    let action = await showEventModal("Manajemen Kartu Bebas Penjara", `${cp.name}, Anda memiliki ${totalCards} Kartu Bebas Penjara.\nPilih tindakan yang ingin dilakukan:`, "🎫", [{text: "Jual 1 Kartu (Rp 100rb)", type: "btn-orange", value: "sell"}, {text: "Tutup", type: "btn-blue", value: "close"}], "#e17055");
+    let action = await showEventModal("Manajemen Kartu Bebas Penjara", `${cp.name}, Anda memiliki ${totalCards} Kartu Bebas Penjara.
+Pilih tindakan yang ingin dilakukan:`, "🎫", [{text: "Jual 1 Kartu (Rp 100rb)", type: "btn-orange", value: "sell"}, {text: "Tutup", type: "btn-blue", value: "close"}], "#e17055");
     if(action === 'sell') {
       if(cp.getOutCards.chance > 0) { cp.getOutCards.chance--; gameState.getOutCardsPool.chance++; } else { cp.getOutCards.community--; gameState.getOutCardsPool.community++; }
       cp.money += 100; triggerExpressionAndSpeak('joy', `${cp.name} menjual 1 Kartu Bebas Penjara seharga Rp 100.000 ke bank.`);
@@ -2432,7 +2443,11 @@
     if (totalNetAssets <= -1000 || bankDebt >= 3000) {
       await showCinematic('bankrupt', player);
       triggerExpressionAndSpeak('cry', `${player.name} dinyatakan bangkrut dan dikeluarkan dari permainan!`);
-      await showEventModal("Pernyataan Bangkrut!", `${player.name} dinyatakan BANGKRUT!\nTotal Aset Bersih: ${formatRupiah(totalNetAssets)}\nUtang Bank: ${formatRupiah(bankDebt)}\n\n${player.name} RESMI DIKELUARKAN DARI PERMAINAN!`, "💸", [{text: "Tutup", type: "btn-red"}], "#d63031");
+      await showEventModal("Pernyataan Bangkrut!", `${player.name} dinyatakan BANGKRUT!
+Total Aset Bersih: ${formatRupiah(totalNetAssets)}
+Utang Bank: ${formatRupiah(bankDebt)}
+
+${player.name} RESMI DIKELUARKAN DARI PERMAINAN!`, "💸", [{text: "Tutup", type: "btn-red"}], "#d63031");
       
       // Lepas semua aset milik pemain ke bank (sita aset)
       gameState.boardData.forEach(cell => {
@@ -2459,7 +2474,9 @@
       if(activePlayers.length === 1) {
         let winner = activePlayers[0];
         triggerExpressionAndSpeak('joy', `Permainan selesai! ${winner.name} adalah pemenangnya!`);
-        await showEventModal("PERMAINAN SELESAI!", `🎉 SELAMAT! 🎉\n\n${winner.name} memenangkan permainan sebagai konglomerat terakhir yang bertahan!`, "🏆", [{text: "Tutup", type: "btn-green"}], "#f1c40f");
+        await showEventModal("PERMAINAN SELESAI!", `🎉 SELAMAT! 🎉
+
+${winner.name} memenangkan permainan sebagai konglomerat terakhir yang bertahan!`, "🏆", [{text: "Tutup", type: "btn-green"}], "#f1c40f");
       }
     }
   }
@@ -2495,12 +2512,14 @@
       if(roundsPassed > 10) {
         cell.owner = null; cell.houses = 0; cell.hotels = 0; cell.mortgaged = false; cell.soldRound = owner.startCount; cell.lastOwnerId = owner.id;
         triggerExpressionAndSpeak('sad', `Aset ${cell.name} disita dan dijual ke bank karena melewati batas 10 putaran GO tidak ditebus.`);
-        await showEventModal("Aset Disita Bank!", `Batas 10 putaran GO terlewati!\nAset ${cell.name} otomatis disita dan dikembalikan ke bank.`, "⚖️", [{text: "Tutup", type: "btn-red"}], "#d63031");
+        await showEventModal("Aset Disita Bank!", `Batas 10 putaran GO terlewati!
+Aset ${cell.name} otomatis disita dan dikembalikan ke bank.`, "⚖️", [{text: "Tutup", type: "btn-red"}], "#d63031");
         updateUI(); saveLocalState(); return;
       }
 
       if(roundsPassed < 5) { 
-        await showEventModal("Gagal Menebus", `Aset ${cell.name} belum bisa ditebus!\nAnda baru melewati ${roundsPassed} dari syarat minimal 5 putaran GO sejak aset digadai.`, "⏳", [{text: "Tutup", type: "btn-red"}], "#d63031"); 
+        await showEventModal("Gagal Menebus", `Aset ${cell.name} belum bisa ditebus!
+Anda baru melewati ${roundsPassed} dari syarat minimal 5 putaran GO sejak aset digadai.`, "⏳", [{text: "Tutup", type: "btn-red"}], "#d63031"); 
         return; 
       }
 
@@ -2550,7 +2569,8 @@
   async function checkDebtStatus(p) {
     if (p.money < -300) {
       triggerExpressionAndSpeak('cry', `Peringatan hutang! Saldo ${p.name} minus di atas 300 ribu.`);
-      await showEventModal("Peringatan Hutang Berat!", `Saldo ${p.name} minus ${formatRupiah(Math.abs(p.money))} (lebih dari Rp 300.000).\nAnda wajib menggadai atau menjual aset sekarang!`, "⚠️", [{text: "Buka Menu Aset", type: "btn-orange", value: "open"}], "#e67e22");
+      await showEventModal("Peringatan Hutang Berat!", `Saldo ${p.name} minus ${formatRupiah(Math.abs(p.money))} (lebih dari Rp 300.000).
+Anda wajib menggadai atau menjual aset sekarang!`, "⚠️", [{text: "Buka Menu Aset", type: "btn-orange", value: "open"}], "#e67e22");
       openAssetsModal();
     }
   }
@@ -2759,7 +2779,8 @@
 
         await showCinematic('jail', p);
         triggerExpressionAndSpeak('cry', `Terlalu sering dadu kembar! ${p.name} harus masuk penjara.`);
-        await showEventModal("Masuk Penjara!", `Dadu kembar 3 kali berturut-turut!\n${p.name} langsung dijebloskan ke penjara.`, "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436");
+        await showEventModal("Masuk Penjara!", `Dadu kembar 3 kali berturut-turut!
+${p.name} langsung dijebloskan ke penjara.`, "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436");
         
         p.pos = 10; p.inJail = true; p.jailSkips = 0; doubleCount = 0;
         if(tokenContainers[10] && playerElements[p.id]) tokenContainers[10].appendChild(playerElements[p.id]);
@@ -2775,7 +2796,8 @@
         let jailButtons = [{text: "Bayar Denda (Rp 50rb)", type: "btn-blue", value: "pay"}, {text: `Tetap di Penjara (${p.jailSkips || 0}/3)`, type: "btn-orange", value: "stay"}];
         if(hasFreeCard) jailButtons.unshift({text: "Gunakan Kartu Bebas", type: "btn-green", value: "card"});
 
-        let jailChoice = await showEventModal("Berada di Penjara", `${p.name} sedang berada di penjara. (Maksimal menolak 3 kali)\nPilih tindakan Anda:`, "🗝️", jailButtons, "#d63031");
+        let jailChoice = await showEventModal("Berada di Penjara", `${p.name} sedang berada di penjara. (Maksimal menolak 3 kali)
+Pilih tindakan Anda:`, "🗝️", jailButtons, "#d63031");
 
         if(jailChoice === 'card') {
           if(p.getOutCards.chance > 0) { p.getOutCards.chance--; gameState.getOutCardsPool.chance++; } else { p.getOutCards.community--; gameState.getOutCardsPool.community++; }
@@ -2790,7 +2812,8 @@
             p.inJail = false; p.jailSkips = 0;
             p.money -= 50; 
             triggerExpressionAndSpeak('cry', `Batas 3 kali lewati habis! ${p.name} dipaksa bebas dan dikenakan denda, atau utang bertambah.`);
-            await showEventModal("Batas Penjara Habis!", `Batas 3 kali melewati giliran di penjara telah habis!\nAnda dipaksa keluar dan dikenakan denda ${formatRupiah(50)} (utang bertambah jika saldo kurang).`, "⚖️", [{text: "Keluar Sel", type: "btn-red"}], "#2d3436");
+            await showEventModal("Batas Penjara Habis!", `Batas 3 kali melewati giliran di penjara telah habis!
+Anda dipaksa keluar dan dikenakan denda ${formatRupiah(50)} (utang bertambah jika saldo kurang).`, "⚖️", [{text: "Keluar Sel", type: "btn-red"}], "#2d3436");
             checkDebtStatus(p);
           } else {
             triggerExpressionAndSpeak('sad', `Anda memilih tetap tinggal di penjara (${p.jailSkips}/3 kali).`);
@@ -2812,7 +2835,8 @@
         // Tampilkan popup modal dadu kembar dan tunggu interaksi pemain
         await showEventModal(
           "Dadu Kembar!", 
-          `Dadu Kembar (${d1}-${d2})!\n${p.name} mendapat kesempatan jalan sekali lagi!`, 
+          `Dadu Kembar (${d1}-${d2})!
+${p.name} mendapat kesempatan jalan sekali lagi!`, 
           "⚡", 
           [{text: "Lanjutkan", type: "btn-green"}], 
           "#f1c40f"
@@ -3051,7 +3075,8 @@ async function handleLanded(p) {
             if(cell.lastOwnerId === p.id || roundsSinceSold < 10) {
               arrivalText += `Aset ini dalam masa jeda blokir pembelian (sisa ${Math.max(0, 10 - roundsSinceSold)} putaran GO).`;
               await speak(arrivalText, false);
-              await showEventModal("Pembelian Ditunda", `Aset ${cell.name} baru saja dijual ke bank.\nAnda harus menunggu jeda 10 putaran GO sejak waktu penjualan terakhir sebelum dapat membelinya kembali!`, "⏳", [{text: "Tutup", type: "btn-blue"}], "#e67e22", cell.img);
+              await showEventModal("Pembelian Ditunda", `Aset ${cell.name} baru saja dijual ke bank.
+Anda harus menunggu jeda 10 putaran GO sejak waktu penjualan terakhir sebelum dapat membelinya kembali!`, "⏳", [{text: "Tutup", type: "btn-blue"}], "#e67e22", cell.img);
               return;
             }
           }
@@ -3073,7 +3098,11 @@ async function handleLanded(p) {
         
         while(!validChoice && attempts < 20) {
           attempts++;
-          let inputDest = prompt(`${p.name} mendarat di Parkir Bebas!\nMasukkan nomor kotak tujuan (0 s.d. 39):\n(Dilarang memilih kotak Penjara [10], Masuk Penjara [30], Kesempatan, atau Dana Umum)\n\nKosongkan / Cancel untuk tetap di Parkir Bebas`);
+          let inputDest = prompt(`${p.name} mendarat di Parkir Bebas!
+Masukkan nomor kotak tujuan (0 s.d. 39):
+(Dilarang memilih kotak Penjara [10], Masuk Penjara [30], Kesempatan, atau Dana Umum)
+
+Kosongkan / Cancel untuk tetap di Parkir Bebas`);
           if(inputDest === null || inputDest.trim() === "") { targetPos = 20; validChoice = true; break; }
           targetPos = parseInt(inputDest);
           if(isNaN(targetPos) || targetPos < 0 || targetPos > 39) { alert("Nomor kotak tidak valid! Masukkan angka antara 0 sampai 39."); continue; }
@@ -3086,8 +3115,10 @@ async function handleLanded(p) {
         if(tokenContainers[p.pos] && playerElements[p.id]){ try { tokenContainers[p.pos].appendChild(playerElements[p.id]); } catch(e){} }
         updateUI();
         let destCell = gameState.boardData[p.pos];
-        if(p.pos === 20){ await showEventModal("Parkir Bebas", `${p.name} tetap di Parkir Bebas.\n(Tidak ada bayaran)`, "🅿️", [{text: "Lanjutkan", type: "btn-blue"}], "#e67e22", destCell.img); } 
-        else { await showEventModal("Parkir Bebas", `${p.name} berpindah ke kotak ${destCell.name}.\n(Tidak ada bayaran dan tidak boleh melakukan pembelian/pembangunan di sini)`, "🅿️", [{text: "Lanjutkan", type: "btn-blue"}], "#e67e22", destCell.img); }
+        if(p.pos === 20){ await showEventModal("Parkir Bebas", `${p.name} tetap di Parkir Bebas.
+(Tidak ada bayaran)`, "🅿️", [{text: "Lanjutkan", type: "btn-blue"}], "#e67e22", destCell.img); } 
+        else { await showEventModal("Parkir Bebas", `${p.name} berpindah ke kotak ${destCell.name}.
+(Tidak ada bayaran dan tidak boleh melakukan pembelian/pembangunan di sini)`, "🅿️", [{text: "Lanjutkan", type: "btn-blue"}], "#e67e22", destCell.img); }
         return; 
       }
       
@@ -3107,7 +3138,11 @@ async function handleLanded(p) {
         }
 
         let title = isC ? " Kesempatan" : " Dana Umum";
-        let fullMessage = card.getOutCard ? `${card.text}\n\n[ANUGERAH: 1 Kartu Bebas Penjara!]` : `${card.text}\n\n${card.amount > 0 ? 'Penerimaan Kas: +' + formatRupiah(card.amount) : 'Pembayaran Upeti: -' + formatRupiah(Math.abs(card.amount))}`;
+        let fullMessage = card.getOutCard ? `${card.text}
+
+[ANUGERAH: 1 Kartu Bebas Penjara!]` : `${card.text}
+
+${card.amount > 0 ? 'Penerimaan Kas: +' + formatRupiah(card.amount) : 'Pembayaran Upeti: -' + formatRupiah(Math.abs(card.amount))}`;
 
         try {
           triggerExpressionAndSpeak(card.type || 'joy', card.text);
@@ -3159,17 +3194,24 @@ async function handleLanded(p) {
         if (cell.owner === null) {
           if (p.money < cell.price) {
             triggerExpressionAndSpeak('sad', `Uang tidak cukup untuk membeli ${cell.name}.`);
-            await showEventModal("Uang Tidak Cukup!", `Aset: ${cell.name}\nHarga: ${formatRupiah(cell.price)}\nUang Anda: ${formatRupiah(p.money)}\nAnda tidak memiliki cukup dana untuk membelinya.`, "❌", [{text: "Tutup", type: "btn-red"}], "#d63031", cell.img);
+            await showEventModal("Uang Tidak Cukup!", `Aset: ${cell.name}
+Harga: ${formatRupiah(cell.price)}
+Uang Anda: ${formatRupiah(p.money)}
+Anda tidak memiliki cukup dana untuk membelinya.`, "❌", [{text: "Tutup", type: "btn-red"}], "#d63031", cell.img);
             return;
           }
 
-          let res = await showEventModal("Beli Properti?", `Aset Daerah: ${cell.name}\nHarga Beli: ${formatRupiah(cell.price)}\nSewa Dasar: ${formatRupiah(cell.price*0.2)}`, "📄", [{text: "Beli", type: "btn-green", value: "b"}, {text: "Lewati", type: "btn-red", value: "s"}], "#0984e3", cell.img);
+          let res = await showEventModal("Beli Properti?", `Aset Daerah: ${cell.name}
+Harga Beli: ${formatRupiah(cell.price)}
+Sewa Dasar: ${formatRupiah(cell.price*0.2)}`, "📄", [{text: "Beli", type: "btn-green", value: "b"}, {text: "Lewati", type: "btn-red", value: "s"}], "#0984e3", cell.img);
           if(res === 'b' && p.money >= cell.price) { triggerExpressionAndSpeak('joy', `Membeli aset ${cell.name} seharga ${formatRupiah(cell.price)}.`); p.money -= cell.price; cell.owner = p.id; }
         } 
         else if (cell.owner === p.id && cell.color && !cell.mortgaged) {
           let houseCost = getHousePrice(cell); let hotelCost = getHotelPrice(cell);
           let canBuildHouse = cell.houses < 4 && cell.hotels === 0; let canBuildHotel = cell.houses === 4 && cell.hotels < 4;
-          let upgradeMsg = `Manajemen Bangunan di ${cell.name}\nRumah: ${cell.houses}/4 | Hotel: ${cell.hotels}/4\n`; let buttons = [{text: "Tutup", type: "btn-red", value: "close"}];
+          let upgradeMsg = `Manajemen Bangunan di ${cell.name}
+Rumah: ${cell.houses}/4 | Hotel: ${cell.hotels}/4
+`; let buttons = [{text: "Tutup", type: "btn-red", value: "close"}];
 
           if(canBuildHouse && p.money >= houseCost) { upgradeMsg += `Harga 1 Rumah: ${formatRupiah(houseCost)}`; buttons.unshift({text: "Beli 1 Rumah", type: "btn-green", value: "house"}); } 
           else if(canBuildHotel && p.money >= hotelCost) { upgradeMsg += `Harga 1 Hotel: ${formatRupiah(hotelCost)}`; buttons.unshift({text: "Beli 1 Hotel", type: "btn-green", value: "hotel"}); } 
@@ -3195,9 +3237,13 @@ async function handleLanded(p) {
           else if(isMono) rent = baseRent * 5;
           rent = Math.round(rent);
 
-          let rentDesc = `Anda berhenti di properti milik ${owner.avatar} ${owner.name}.\nWilayah: ${cell.name}\nTarif Sewa Dasar: ${formatRupiah(baseRent)}`;
-          if(isMono && cell.houses === 0 && cell.hotels === 0) rentDesc += `\n[👑 Bonus Monopoli Kompleks/Utilitas: Sewa jadi 5x Lipat!]`;
-          rentDesc += `\nTotal Tagihan Sewa: ${formatRupiah(rent)}`;
+          let rentDesc = `Anda berhenti di properti milik ${owner.avatar} ${owner.name}.
+Wilayah: ${cell.name}
+Tarif Sewa Dasar: ${formatRupiah(baseRent)}`;
+          if(isMono && cell.houses === 0 && cell.hotels === 0) rentDesc += `
+[👑 Bonus Monopoli Kompleks/Utilitas: Sewa jadi 5x Lipat!]`;
+          rentDesc += `
+Total Tagihan Sewa: ${formatRupiah(rent)}`;
 
           triggerExpressionAndSpeak('sad', `Membayar sewa kepada ${owner.name} sebesar ${formatRupiah(rent)}.`);
           await showEventModal("Bayar Sewa Properti!", rentDesc, "🤝", [{text: "Bayar ke " + owner.name, type: "btn-blue", value: "p"}], "#e84393", cell.img);
