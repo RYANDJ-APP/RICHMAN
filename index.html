@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" oncontextmenu="return false">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -99,16 +99,106 @@
 
   /* --- LAYOUT UTAMA & MANAJEMEN ASET DI KIRI --- */
   .main-layout {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: center;
-    gap: 15px;
+    display: grid;
+    grid-template-columns: 300px 1fr 300px;
+    align-items: start;
+    justify-items: center;
+    gap: 20px;
     width: 100vw;
     height: calc(100vh - 55px);
     box-sizing: border-box;
-    padding: 10px;
+    padding: 15px;
     overflow: hidden;
+  }
+  /* Simetris horizontal: dashboard kiri, papan tengah, spacer kanan */
+  .main-layout .asset-dashboard-side {
+    justify-self: start;
+    width: 280px;
+    max-width: 100%;
+    transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+  }
+  .main-layout .board-container-3d {
+    justify-self: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+  /* Popup perjalanan simetris di tengah papan */
+  #diceAnimOverlay, #cinematicOverlay {
+    left: 150px; /* offset dashboard 300px / 2 */
+    width: calc(100vw - 150px);
+    justify-content: center;
+  }
+  #royalModal, #eventModal, #tariffModal, #assetsModal, #sessionModal {
+    left: 150px;
+    width: calc(100vw - 150px);
+  }
+  /* Dashboard holder collapse - bukan show/hide konten saja */
+  .asset-dashboard-side.collapsed-holder {
+    width: 52px !important;
+    min-width: 52px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.9);
+    border-width: 2px;
+  }
+  .asset-dashboard-side.collapsed-holder .asset-dashboard-body {
+    display: none;
+    opacity: 0;
+  }
+  .asset-dashboard-side.collapsed-holder .asset-dashboard-header {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    padding: 20px 8px;
+    justify-content: center;
+    gap: 12px;
+  }
+  .asset-dashboard-side.collapsed-holder .asset-dashboard-header span:first-child {
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+  .asset-dashboard-side.collapsed-holder #dashboardToggleIcon {
+    transform: rotate(90deg);
+    font-size: 14px;
+  }
+  /* Responsive tablet/android portrait/landscape adaptif */
+  @media (max-width: 1024px) {
+    .main-layout {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 1fr;
+      height: auto;
+      min-height: calc(100vh - 55px);
+      overflow-y: auto;
+    }
+    .main-layout .asset-dashboard-side {
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      order: 2;
+    }
+    .main-layout .asset-dashboard-side.collapsed-holder {
+      width: 100% !important;
+      height: 50px;
+    }
+    .main-layout .asset-dashboard-side.collapsed-holder .asset-dashboard-header {
+      writing-mode: horizontal-tb;
+      transform: none;
+      padding: 12px;
+    }
+    .main-layout .board-container-3d {
+      order: 1;
+    }
+    #diceAnimOverlay, #cinematicOverlay, #royalModal, #eventModal, #tariffModal, #assetsModal, #sessionModal {
+      left: 0;
+      width: 100vw;
+    }
+  }
+  @media (orientation: portrait) and (max-width: 768px) {
+    .board {
+      transform-origin: center center;
+    }
   }
 
   .asset-dashboard-side {
@@ -1175,9 +1265,10 @@
               <div style="flex:1;">
                 <label style="font-size:11px;">Level Kecerdasan Bot</label>
                 <select id="cfgBotLevel">
-                  <option value="easy">Easy (Santai)</option>
+                  <option value="easy">Easy (Santai - Sering Boncos)</option>
                   <option value="normal" selected>Normal (Standar)</option>
-                  <option value="hard">Hard (Agresif / Ahli)</option>
+                  <option value="hard">Hard (Agresif - Pemburu Monopoli)</option>
+                  <option value="genius">Jenius (Strategi ROI & Monopoli)</option>
                 </select>
               </div>
             </div>
@@ -1303,16 +1394,24 @@
   // No autohide - toolbar always visible (fix toolbar)
 
   function toggleAssetDashboard() {
+    let holder = document.getElementById('assetDashboardSide');
     let body = document.getElementById('assetDashboardBody');
     let icon = document.getElementById('dashboardToggleIcon');
-    if(body && icon) {
-      if(body.classList.contains('collapsed')) {
-        body.classList.remove('collapsed');
+    if(holder && icon) {
+      if(holder.classList.contains('collapsed-holder')) {
+        holder.classList.remove('collapsed-holder');
+        if(body) body.classList.remove('collapsed');
         icon.innerText = '▼';
+        // Expand holder - simetris distribusi kembali
+        holder.style.width = '280px';
       } else {
-        body.classList.add('collapsed');
+        holder.classList.add('collapsed-holder');
+        if(body) body.classList.add('collapsed');
         icon.innerText = '▲';
+        // Collapse holder menjadi strip holder, bukan hanya hide konten
       }
+      // Re-fit desktop untuk adaptif portrait/landscape
+      setTimeout(()=>{ try{ fitToDesktop(); }catch(e){} }, 350);
     }
   }
 
@@ -1834,7 +1933,7 @@
         await showWalkingScene(player, fromPos, toPos, steps, i+1);
         triggerExpressionAndSpeak('joy', `Selamat ${player.name}`, 'start');
         player.money += 200; updateUI();
-        await showEventModal("Melewati GO!", `Selamat anda Melewati Start dan mendapat gaji ${formatRupiah(200)}`, "💵", [{text: "Ambil Gaji", type: "btn-green"}], "#0984e3", null, 'start');
+        await showEventModal("Melewati GO!", `anda mendapat gaji ${formatRupiah(200)}`, "💵", [{text: "Ambil Gaji", type: "btn-green"}], "#0984e3", null, 'start');
       }
       
       await new Promise(r => setTimeout(r, stepDelayMs));
@@ -1935,6 +2034,79 @@
   window.addEventListener('orientationchange', () => { setTimeout(() => { fitToDesktop(); resetZoom(); }, 300); });
   document.addEventListener('contextmenu', function(e){ e.preventDefault(); return false; }, { passive: false });
   document.addEventListener('selectstart', function(e){ if(e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return true; e.preventDefault(); return false; });
+
+  // === PENGAMAN KLIK KANAN, F12, ANTI COPY - DIPERKUAT ===
+  document.addEventListener('keydown', function(e){
+    // F12
+    if(e.key === 'F12' || e.keyCode === 123){
+      e.preventDefault(); e.stopPropagation(); return false;
+    }
+    // Ctrl+Shift+I / J / C (DevTools)
+    if(e.ctrlKey && e.shiftKey){
+      let k = e.key.toUpperCase();
+      if(k === 'I' || k === 'J' || k === 'C' || k === 'K'){
+        e.preventDefault(); e.stopPropagation(); return false;
+      }
+    }
+    // Ctrl+U (View Source), Ctrl+S (Save), Ctrl+P (Print), Ctrl+C / X / V / A (copy) di luar input
+    if(e.ctrlKey){
+      let k = e.key.toUpperCase();
+      if(k === 'U' || k === 'S' || k === 'P'){
+        e.preventDefault(); e.stopPropagation(); return false;
+      }
+      // Anti copy/cut di luar input
+      if((k === 'C' || k === 'X' || k === 'A') && !(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)){
+        e.preventDefault(); e.stopPropagation(); return false;
+      }
+    }
+  }, {capture: true});
+
+  document.addEventListener('keyup', function(e){
+    if(e.key === 'F12' || e.keyCode === 123){
+      e.preventDefault(); e.stopPropagation(); return false;
+    }
+  }, {capture: true});
+
+  // Anti copy, cut, paste, drag
+  document.addEventListener('copy', function(e){ e.preventDefault(); return false; });
+  document.addEventListener('cut', function(e){ e.preventDefault(); return false; });
+  document.addEventListener('paste', function(e){
+    if(!(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')){
+      e.preventDefault(); return false;
+    }
+  });
+  document.addEventListener('dragstart', function(e){ e.preventDefault(); return false; });
+  document.addEventListener('selectstart', function(e){ 
+    if(!(e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')){
+      e.preventDefault(); return false; 
+    }
+  });
+
+  // Disable right click via oncontextmenu on html
+  document.documentElement.setAttribute('oncontextmenu','return false');
+  document.body.setAttribute('oncontextmenu','return false');
+
+  // Anti DevTools via window resize / debugger detection (basic)
+  setInterval(function(){
+    let threshold = 160;
+    let widthDiff = window.outerWidth - window.innerWidth > threshold;
+    let heightDiff = window.outerHeight - window.innerHeight > threshold;
+    if(widthDiff || heightDiff){
+      // Jangan redirect, hanya blur dan warning
+      document.body.style.filter = 'blur(5px)';
+      setTimeout(()=>{ document.body.style.filter = ''; }, 1000);
+    }
+  }, 1000);
+
+  // Prevent text selection via CSS tambahan
+  let antiCopyStyle = document.createElement('style');
+  antiCopyStyle.innerHTML = `
+    * { -webkit-user-select: none !important; -moz-user-select: none !important; -ms-user-select: none !important; user-select: none !important; }
+    input, textarea, select { -webkit-user-select: text !important; -moz-user-select: text !important; -ms-user-select: text !important; user-select: text !important; }
+    img { pointer-events: none !important; -webkit-user-drag: none !important; }
+  `;
+  document.head.appendChild(antiCopyStyle);
+
   
   let fullscreenTriggered = false;
   function triggerFullscreenOnce(){ if(!fullscreenTriggered){ fullscreenTriggered = true; requestFullscreen(); fitToDesktop(); } }
@@ -2933,19 +3105,160 @@
     });
   }
 
-  function checkBotTurn() {
+    function checkBotTurn() {
     let cp = gameState.players[gameState.turnIndex];
     if (cp && cp.isBot) {
       let rollBtn = document.getElementById('rollBtn');
       if (rollBtn) rollBtn.disabled = true;
-      let delay = cp.botLevel === 'hard' ? 1200 : cp.botLevel === 'normal' ? 1800 : 2500;
+      let delayMap = { 'easy': 2200, 'normal': 1500, 'hard': 900, 'genius': 600 };
+      let delay = delayMap[cp.botLevel] || 1500;
+      let thinkingText = {
+        'easy': `${cp.name} mikir lama... (Easy)`,
+        'normal': `${cp.name} berpikir... (Normal)`,
+        'hard': `${cp.name} kalkulasi cepat! (Hard)`,
+        'genius': `${cp.name} analisa ROI... (Jenius)`
+      };
       setTimeout(async () => {
-        triggerExpressionAndSpeak('joy', `Giliran ${cp.name} (Komputer) berpikir...`);
+        try { playVocalExpression('joy'); } catch(e){}
+        await speak(thinkingText[cp.botLevel] || `${cp.name} berpikir...`, false, 'arrival');
         await executeBotTurn(cp);
       }, delay);
     } else {
       let rollBtn = document.getElementById('rollBtn');
       if (rollBtn) rollBtn.disabled = false;
+    }
+  }
+
+  function getBotParkingDestination(bot) {
+    let validPositions = [];
+    for(let i=0;i<40;i++){
+      if(i===10 || i===30) continue;
+      let c = gameState.boardData[i];
+      if(c && (c.special === 'chance' || c.special === 'dana')) continue;
+      validPositions.push(i);
+    }
+    if(validPositions.length===0) return 20;
+    let level = bot.botLevel || 'normal';
+    if(level === 'easy'){
+      // 50% stay, 50% random
+      if(Math.random() < 0.5) return 20;
+      return validPositions[Math.floor(Math.random()*validPositions.length)];
+    } else if(level === 'normal'){
+      // Prefer GO (0)
+      if(Math.random() < 0.4) return 0;
+      if(Math.random() < 0.3) return 20;
+      return validPositions[Math.floor(Math.random()*validPositions.length)];
+    } else if(level === 'hard'){
+      // Hard: cari properti yang melengkapi monopoli atau GO
+      // Cari GO dulu
+      if(gameState.boardData[0]) return 0;
+      // Cari unowned yang satu grup dengan milik bot
+      for(let pos of validPositions){
+        let cell = gameState.boardData[pos];
+        if(cell && cell.owner === null && cell.color){
+          // cek apakah bot sudah punya 1 dari grup ini
+          let ownedInGroup = gameState.boardData.filter(c=> c.color===cell.color && c.owner===bot.id).length;
+          if(ownedInGroup>0) return pos;
+        }
+      }
+      return 0; // default GO
+    } else { // genius
+      // Genius: analisa posisi paling aman / paling menguntungkan
+      // Jika banyak properti lawan dengan sewa tinggi di depan, stay di parkir (20) adalah paling aman
+      let dangerousRent = 0;
+      for(let i=1;i<=12;i++){
+        let ahead = (bot.pos + i) % 40;
+        let c = gameState.boardData[ahead];
+        if(c && c.owner !== null && c.owner !== bot.id && !c.mortgaged && c.price>0){
+          let base = Math.round(c.price*0.2);
+          let rent = base;
+          if(c.hotels>0) rent = base*(1+0.35*c.hotels);
+          else if(c.houses>0) rent = base*(1+0.25*c.houses);
+          else if(hasMonopolyGroup(c.owner, c)) rent = base*5;
+          dangerousRent += rent;
+        }
+      }
+      // Jika bahaya > 500, stay di parkir
+      if(dangerousRent > 500) return 20;
+      // Jika tidak bahaya, pergi ke GO untuk gaji
+      return 0;
+    }
+  }
+
+  function shouldBotBuy(bot, cell){
+    if(!cell || cell.owner!==null || cell.price<=0 || cell.special) return false;
+    // Cek blokir 10 putaran
+    if(cell.soldRound !== undefined && cell.soldRound !== null){
+      let roundsSinceSold = bot.startCount - cell.soldRound;
+      if(cell.lastOwnerId === bot.id || roundsSinceSold < 10) return false;
+    }
+    let level = bot.botLevel || 'normal';
+    let price = cell.price;
+    let money = bot.money;
+    
+    // Hitung potensi monopoli
+    let ownedInGroup = 0;
+    let totalInGroup = 0;
+    if(cell.color){
+      let group = gameState.boardData.filter(c=>c.color===cell.color);
+      totalInGroup = group.length;
+      ownedInGroup = group.filter(c=>c.owner===bot.id).length;
+    }
+    let completesMonopoly = (ownedInGroup === totalInGroup -1);
+    
+    if(level === 'easy'){
+      // Easy: boros, takut beli mahal, sering lewati
+      if(price > 280) return false;
+      if(money < price * 1.8) return false;
+      return Math.random() > 0.6;
+    } else if(level === 'normal'){
+      if(money < price + 250) return false;
+      return true;
+    } else if(level === 'hard'){
+      if(money < price + 100) return false;
+      if(completesMonopoly) return true; // wajib beli jika melengkapi monopoli
+      if(cell.isUtility || cell.name.includes('Stasiun') || cell.name.includes('Bandara') || cell.name.includes('Pelabuhan') || cell.name.includes('Terminal')) return true;
+      return money >= price + 150;
+    } else { // genius
+      if(money < price + 50) return false;
+      if(completesMonopoly) return true;
+      // ROI: harga sewa dasar vs harga beli
+      let baseRent = Math.round(price*0.2);
+      let roi = baseRent / price;
+      // Jika ROI tinggi atau bagian dari rencana monopoli
+      if(roi > 0.18) return true;
+      if(ownedInGroup >0) return true;
+      // Jika uang masih banyak, beli semua
+      if(money > 1500) return true;
+      return money >= price + 80;
+    }
+  }
+
+  function shouldBotBuild(bot, cell){
+    if(!cell || cell.owner !== bot.id || !cell.color || cell.mortgaged) return false;
+    if(!hasMonopolyGroup(bot.id, cell)) return false;
+    let houseCost = getHousePrice(cell);
+    let hotelCost = getHotelPrice(cell);
+    let canBuildHouse = cell.houses < 4 && cell.hotels === 0;
+    let canBuildHotel = cell.houses === 4 && cell.hotels < 4;
+    if(!canBuildHouse && !canBuildHotel) return false;
+    let cost = canBuildHouse ? houseCost : hotelCost;
+    let level = bot.botLevel || 'normal';
+    
+    if(level === 'easy'){
+      if(bot.money < cost + 900) return false;
+      if(cell.houses >=2) return false; // easy tidak bangun lebih dari 2 rumah
+      return Math.random() > 0.7;
+    } else if(level === 'normal'){
+      if(bot.money < cost + 450) return false;
+      return true;
+    } else if(level === 'hard'){
+      if(bot.money < cost + 200) return false;
+      return true;
+    } else { // genius
+      if(bot.money < cost + 100) return false;
+      // Genius bangun hotel secepat mungkin untuk memaksimalkan sewa
+      return true;
     }
   }
 
@@ -2957,17 +3270,82 @@
     if (isDouble) doubleCount++; else doubleCount = 0;
 
     let diceDisp = document.getElementById('diceDisplay');
-    if(diceDisp) diceDisp.innerText = `🤖 Bot ${bot.name}: ${d1} / ${d2} (Maju ${steps})`;
+    if(diceDisp) diceDisp.innerText = `🤖 ${bot.name}: ${d1} / ${d2} (Maju ${steps}) [${bot.botLevel}]`;
 
     if (bot.inJail) {
+      let level = bot.botLevel || 'normal';
       if (bot.getOutCards && (bot.getOutCards.chance > 0 || bot.getOutCards.community > 0)) {
-        if(bot.getOutCards.chance > 0) { bot.getOutCards.chance--; gameState.getOutCardsPool.chance++; } 
-        else { bot.getOutCards.community--; gameState.getOutCardsPool.community++; }
-        bot.inJail = false; bot.jailSkips = 0;
-        await showCinematic('free', bot, "Bot Pakai Kartu Bebas!");
-      } else if (bot.money >= 100 && bot.botLevel !== 'easy') {
-        bot.money -= 50; bot.inJail = false; bot.jailSkips = 0;
-        await showCinematic('free', bot, "Bot Bayar Denda Rp 50rb");
+        if(level === 'easy'){
+          // Easy tidak pakai kartu, simpan terus
+          if(Math.random() < 0.3){
+            if(bot.getOutCards.chance > 0) { bot.getOutCards.chance--; gameState.getOutCardsPool.chance++; } 
+            else { bot.getOutCards.community--; gameState.getOutCardsPool.community++; }
+            bot.inJail = false; bot.jailSkips = 0;
+            await showCinematic('free', bot, "Bot Pakai Kartu Bebas!");
+          } else {
+            bot.jailSkips = (bot.jailSkips || 0) + 1;
+            if(bot.jailSkips >= 3) { bot.inJail = false; bot.jailSkips = 0; bot.money -= 50; }
+            else { endTurn(); return; }
+          }
+        } else if(level === 'genius'){
+          // Genius pakai kartu hanya jika di luar penjara lebih menguntungkan
+          let dangerous = 0;
+          for(let i=1;i<=12;i++){
+            let ahead = (bot.pos + i) % 40;
+            let c = gameState.boardData[ahead];
+            if(c && c.owner !== null && c.owner !== bot.id && !c.mortgaged) dangerous++;
+          }
+          if(dangerous < 4){ // aman di luar, pakai kartu
+            if(bot.getOutCards.chance > 0) { bot.getOutCards.chance--; gameState.getOutCardsPool.chance++; } 
+            else { bot.getOutCards.community--; gameState.getOutCardsPool.community++; }
+            bot.inJail = false; bot.jailSkips = 0;
+            await showCinematic('free', bot, "Bot Jenius Pakai Kartu Bebas!");
+          } else {
+            // di luar berbahaya, tetap di penjara
+            bot.jailSkips = (bot.jailSkips || 0) + 1;
+            if(bot.jailSkips >= 3) { bot.inJail = false; bot.jailSkips = 0; bot.money -= 50; }
+            else { endTurn(); return; }
+          }
+        } else {
+          // Normal & Hard pakai langsung
+          if(bot.getOutCards.chance > 0) { bot.getOutCards.chance--; gameState.getOutCardsPool.chance++; } 
+          else { bot.getOutCards.community--; gameState.getOutCardsPool.community++; }
+          bot.inJail = false; bot.jailSkips = 0;
+          await showCinematic('free', bot, "Bot Pakai Kartu Bebas!");
+        }
+      } else if (bot.money >= 50) {
+        if(level === 'easy'){
+          bot.jailSkips = (bot.jailSkips || 0) + 1;
+          if(bot.jailSkips >= 3) { bot.inJail = false; bot.jailSkips = 0; bot.money -= 50; await showCinematic('free', bot, "Bot Bayar Denda Rp 50rb"); }
+          else { endTurn(); return; }
+        } else if(level === 'normal'){
+          if(bot.jailSkips >= 1 && bot.money >= 150){
+            bot.money -= 50; bot.inJail = false; bot.jailSkips = 0;
+            await showCinematic('free', bot, "Bot Bayar Denda Rp 50rb");
+          } else {
+            bot.jailSkips = (bot.jailSkips || 0) + 1;
+            if(bot.jailSkips >= 3) { bot.inJail = false; bot.jailSkips = 0; bot.money -= 50; }
+            else { endTurn(); return; }
+          }
+        } else if(level === 'hard'){
+          bot.money -= 50; bot.inJail = false; bot.jailSkips = 0;
+          await showCinematic('free', bot, "Bot Hard Bayar Denda Cepat");
+        } else { // genius - analisa bahaya
+          let dangerous = 0;
+          for(let i=1;i<=12;i++){
+            let ahead = (bot.pos + i) % 40;
+            let c = gameState.boardData[ahead];
+            if(c && c.owner !== null && c.owner !== bot.id && !c.mortgaged) dangerous++;
+          }
+          if(dangerous >= 4 && bot.jailSkips < 2){
+            // Tetap di penjara karena di luar berbahaya
+            bot.jailSkips = (bot.jailSkips || 0) + 1;
+            endTurn(); return;
+          } else {
+            bot.money -= 50; bot.inJail = false; bot.jailSkips = 0;
+            await showCinematic('free', bot, "Bot Jenius Keluar Penjara - Aman!");
+          }
+        }
       } else {
         bot.jailSkips = (bot.jailSkips || 0) + 1;
         if(bot.jailSkips >= 3) { bot.inJail = false; bot.jailSkips = 0; bot.money -= 50; } 
@@ -2978,8 +3356,28 @@
       await handleBotLanding(bot);
     }
 
-    if (isDouble && !bot.inJail && bot.botLevel === 'hard') {
-      await executeBotTurn(bot);
+    // Aturan dadu dobel berlaku sama untuk bot dan manusia
+    if (isDouble) {
+      if(bot.inJail){
+        endTurn();
+      } else {
+        if(doubleCount >= 3){
+          // 3x double masuk penjara - sama untuk bot
+          await showCinematic('jail', bot);
+          playVocalExpression('cry');
+          await showEventModal("Masuk Penjara! 3x Dadu Dobel", `${bot.name} 3x dadu dobel berturut-turut! Masuk penjara!`, "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436", null, 'jail');
+          bot.pos = 10; bot.inJail = true; bot.jailSkips = 0;
+          if(tokenContainers[10] && playerElements[bot.id]) tokenContainers[10].appendChild(playerElements[bot.id]);
+          doubleCount = 0;
+          endTurn();
+        } else {
+          // Dapat giliran lagi - semua level sama
+          await speak(`${bot.name} dapat dadu dobel! Giliran lagi.`, false, 'arrival');
+          // Delay sedikit sebelum lempar lagi
+          setTimeout(()=>{ checkBotTurn(); }, 800);
+          return;
+        }
+      }
     } else {
       endTurn();
     }
@@ -2988,22 +3386,143 @@
   async function handleBotLanding(bot) {
     let cell = gameState.boardData[bot.pos];
     if (!cell) return;
-    if (cell.price > 0 && !cell.special && cell.owner === null) {
-      let shouldBuy = false;
-      if (bot.botLevel === 'hard') { shouldBuy = bot.money >= (cell.price + 200); } 
-      else if (bot.botLevel === 'normal') { shouldBuy = bot.money >= cell.price; } 
-      else { shouldBuy = bot.money >= (cell.price * 1.5) && Math.random() > 0.5; }
 
-      if (shouldBuy && bot.money >= cell.price) {
-        bot.money -= cell.price; cell.owner = bot.id;
-        triggerExpressionAndSpeak('joy', `Bot ${bot.name} membeli properti ${cell.name}!`);
+    // === PERLAKUKAN BOT SAMA SEPERTI MANUSIA - SEMUA ATURAN BERLAKU SAMA ===
+    // TTS bot: sudut jangan sebut pemilik, hanya petak daerah yang bisa dibeli sebut pemiliknya
+    let isBuyableBot = (cell.price > 0 && !cell.special && cell.type !== 'corner');
+    if(isBuyableBot){
+      let ownerNameBot = "Belum ada";
+      if(cell.owner !== null){
+        let owner = gameState.players.find(pl => pl.id === cell.owner);
+        ownerNameBot = owner ? owner.name : "Pemain lain";
+      }
+      await speak(`${bot.name} tiba di ${cell.name}, milik ${ownerNameBot}`, false, 'arrival');
+    } else {
+      if(cell.special !== 'chance' && cell.special !== 'dana' && bot.pos !== 20){
+        await speak(`${bot.name} tiba di ${cell.name}`, false, 'arrival');
       }
     }
-    else if (cell.owner === bot.id && cell.color && !cell.mortgaged && bot.botLevel !== 'easy') {
-      let houseCost = getHousePrice(cell);
-      if (cell.houses < 4 && bot.money >= (houseCost + 400)) {
-        bot.money -= houseCost; cell.houses++;
-        triggerExpressionAndSpeak('joy', `Bot ${bot.name} membangun rumah di ${cell.name}.`);
+    
+    // Kartu Kesempatan / Dana Umum - sama seperti manusia
+    if (cell.special === 'chance' || cell.special === 'dana') {
+      let isC = cell.special === 'chance';
+      let cardList = isC ? chanceCards : communityCards;
+      let card = cardList[Math.floor(Math.random() * cardList.length)];
+      if (card.getOutCard && gameState.getOutCardsPool[card.deck] <= 0) {
+        card = cardList.find(c => !c.getOutCard) || cardList[0];
+      }
+      let title = isC ? "Kartu Kesempatan" : "Kartu Dana Umum";
+      let fullMessage = card.getOutCard ? `${card.text}\n\n[ANUGERAH: 1 Kartu Bebas Penjara!]` : `${card.text}\n\n${card.amount > 0 ? 'Penerimaan Kas: +' + formatRupiah(card.amount) : 'Pembayaran Upeti: -' + formatRupiah(Math.abs(card.amount))}`;
+      
+      try { playVocalExpression(card.type || 'joy'); } catch(e){}
+      let isGoodEvent = (card.amount >= 0 && !card.goToJail);
+      await showRoyalScrollModal(title, fullMessage, isGoodEvent);
+      await speak(`${title} untuk ${bot.name}, ${card.text}`, true, 'card');
+
+      if (card.goToJail) {
+        await showCinematic('jail', bot);
+        playVocalExpression('cry');
+        await showEventModal("Bot Masuk Penjara!", `${bot.name} tertangkap! Masuk penjara!`, "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436", null, 'jail');
+        bot.pos = 10; bot.inJail = true; bot.jailSkips = 0;
+        if(tokenContainers[10] && playerElements[bot.id]) tokenContainers[10].appendChild(playerElements[bot.id]);
+      } else if (card.getOutCard) {
+        gameState.getOutCardsPool[card.deck]--;
+        bot.getOutCards[card.deck] = (bot.getOutCards[card.deck] || 0) + 1;
+        await speak(`${bot.name} dapat kartu bebas penjara!`, false, 'card');
+      } else {
+        bot.money += card.amount;
+        if(card.amount > 0) playVocalExpression('joy');
+        else playVocalExpression('sad');
+      }
+      return;
+    }
+
+    // Parkir Bebas - sama aturannya, hanya pemilihan tujuan berbeda per level
+    if (bot.pos === 20) {
+      await speak(`${bot.name} tiba di ${cell.name}`, false, 'arrival');
+      playVocalExpression('joy');
+      let targetPos = getBotParkingDestination(bot);
+      bot.pos = targetPos;
+      if(tokenContainers[bot.pos] && playerElements[bot.id]){ try { tokenContainers[bot.pos].appendChild(playerElements[bot.id]); } catch(e){} }
+      updateUI();
+      let destCell = gameState.boardData[bot.pos];
+      if(bot.pos === 20){
+        await showEventModal("Parkir Bebas - Bot", `${bot.name} tetap di Parkir Bebas. (Tidak bayar)`, "🅿️", [{text: "Lanjutkan", type: "btn-blue"}], "#e67e22", destCell.img, 'parking');
+      } else {
+        await showEventModal("Parkir Bebas - Bot", `${bot.name} pindah ke ${destCell.name}. (Tidak bayar & tidak bisa beli/bangun di sini)`, "🅿️", [{text: "Lanjutkan", type: "btn-blue"}], "#e67e22", destCell.img, 'parking');
+      }
+      return;
+    }
+
+    // Blokir pembelian - berlaku sama
+    if (cell.price > 0 && !cell.special && cell.owner === null) {
+      if(cell.soldRound !== undefined && cell.soldRound !== null){
+        let roundsSinceSold = bot.startCount - cell.soldRound;
+        if(cell.lastOwnerId === bot.id || roundsSinceSold < 10){
+          await showEventModal("Pembelian Ditunda - Bot", `${bot.name} tidak bisa beli ${cell.name} - masih dalam blokir 10 putaran.`, "⏳", [{text: "Tutup", type: "btn-blue"}], "#e67e22", cell.img, 'arrival');
+          return;
+        }
+      }
+    }
+
+    // Pajak - wajib bayar sama seperti manusia
+    if (cell.special === 'tax') {
+      playVocalExpression('sad');
+      await showEventModal("Bayar Pajak - Bot", `${bot.name} bayar pajak ${formatRupiah(cell.price)}`, "💸", [{text: "Bayar", type: "btn-red"}], "#d63031", null, 'payment');
+      bot.money -= cell.price;
+      return;
+    } 
+    // Masuk Penjara (petak 30)
+    else if (bot.pos === 30) {
+      playVocalExpression('cry');
+      await showEventModal("Masuk Penjara! - Bot", `${bot.name} tertangkap! Langsung ke penjara!`, "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436", null, 'jail');
+      bot.pos = 10; bot.inJail = true; bot.jailSkips = 0; 
+      if(tokenContainers[10] && playerElements[bot.id]) tokenContainers[10].appendChild(playerElements[bot.id]);
+      return;
+    } 
+    // Properti
+    else if (cell.price > 0 && !cell.special) {
+      if (cell.owner === null) {
+        if(shouldBotBuy(bot, cell)){
+          bot.money -= cell.price; cell.owner = bot.id;
+          playVocalExpression('joy');
+          await showEventModal("Bot Beli Properti!", `${bot.avatar} ${bot.name} [${bot.botLevel}] membeli ${cell.name} seharga ${formatRupiah(cell.price)}!`, "🏠", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img, 'payment');
+          await speak(`${bot.name} membeli ${cell.name}`, false, 'payment');
+        } else {
+          await showEventModal("Bot Lewati Beli", `${bot.name} [${bot.botLevel}] melewati ${cell.name} - strategi ${bot.botLevel}`, "🤔", [{text: "Lanjut", type: "btn-blue"}], "#636e72", cell.img, 'arrival');
+        }
+      } 
+      else if (cell.owner === bot.id && cell.color && !cell.mortgaged) {
+        if(shouldBotBuild(bot, cell)){
+          let houseCost = getHousePrice(cell);
+          let hotelCost = getHotelPrice(cell);
+          let canBuildHouse = cell.houses < 4 && cell.hotels === 0;
+          let canBuildHotel = cell.houses === 4 && cell.hotels < 4;
+          if(canBuildHouse){
+            await showCinematic('buildHouse', bot, cell.name);
+            bot.money -= houseCost; cell.houses++;
+            playVocalExpression('joy');
+            await showEventModal("Bot Bangun Rumah!", `${bot.name} [${bot.botLevel}] bangun rumah ke-${cell.houses} di ${cell.name}`, "🏗️", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img, 'build');
+          } else if(canBuildHotel){
+            await showCinematic('buildHotel', bot, cell.name);
+            bot.money -= hotelCost; cell.hotels++;
+            playVocalExpression('joy');
+            await showEventModal("Bot Bangun Hotel!", `${bot.name} [${bot.botLevel}] bangun hotel ke-${cell.hotels} di ${cell.name}`, "🏨", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img, 'build');
+          }
+        }
+      }
+      else if (cell.owner !== bot.id && !cell.mortgaged) {
+        // Bayar sewa - sama seperti manusia
+        let owner = gameState.players.find(pl => pl.id === cell.owner); if(!owner) return;
+        let baseRent = cell.price > 0 ? Math.round(cell.price * 0.2) : 0;
+        let rent = baseRent; let isMono = hasMonopolyGroup(owner.id, cell);
+        if(cell.hotels > 0) rent = baseRent * (1 + 0.35 * cell.hotels);
+        else if(cell.houses > 0) rent = baseRent * (1 + 0.25 * cell.houses);
+        else if(isMono) rent = baseRent * 5;
+        rent = Math.round(rent);
+        playVocalExpression('sad');
+        await showEventModal("Bayar Sewa! - Bot", `${bot.name} bayar sewa ${formatRupiah(rent)} ke ${owner.name} untuk ${cell.name}`, "🤝", [{text: "Bayar", type: "btn-blue"}], "#e84393", cell.img, 'payment');
+        bot.money -= rent; owner.money += rent;
       }
     }
   }
@@ -3016,8 +3535,8 @@
       let rollBtn = document.getElementById('rollBtn');
       if(rollBtn) rollBtn.disabled = true;
 
-      // === SISTEM TTS YANG DISEDERHANAKAN ===
-      // Untuk kartu: langsung sebut "Kartu Kesempatan/Dana Umum" + isi kartu tanpa nama petak
+      // === TTS TANPA PENGULANGAN, KARTU LANGSUNG POPUP ===
+      // Kartu Kesempatan / Dana Umum: langsung tayangkan popup baru bacakan, tanpa baca rupiah
       if (cell.special === 'chance' || cell.special === 'dana') {
         let isC = cell.special === 'chance'; 
         let cardList = isC ? chanceCards : communityCards; 
@@ -3030,12 +3549,12 @@
         let title = isC ? "Kartu Kesempatan" : "Kartu Dana Umum";
         let fullMessage = card.getOutCard ? `${card.text}\n\n[ANUGERAH: 1 Kartu Bebas Penjara!]` : `${card.text}\n\n${card.amount > 0 ? 'Penerimaan Kas: +' + formatRupiah(card.amount) : 'Pembayaran Upeti: -' + formatRupiah(Math.abs(card.amount))}`;
 
-        // TTS disederhanakan: langsung sebut jenis kartu + isi
-        await speak(`${title}, ${card.text}`, true, 'card');
+        // Segera tayangkan popup dulu
         try { playVocalExpression(card.type || 'joy'); } catch(e) {}
-        
         let isGoodEvent = (card.amount >= 0 && !card.goToJail);
         await showRoyalScrollModal(title, fullMessage, isGoodEvent);
+        // Baru bacakan, tanpa rupiah, tanpa pengulangan
+        await speak(`${title}, ${card.text}`, true, 'card');
 
         if (card.goToJail) {
           let rollBtnEl = document.getElementById('rollBtn');
@@ -3056,9 +3575,9 @@
         return;
       }
 
-      // Parkir Bebas - TTS sederhana
+      // Parkir Bebas - petak sudut, jangan sebut pemilik
       if (p.pos === 20) {
-        await speak(`Tiba di ${cell.name}, milik Belum ada`, false, 'arrival');
+        await speak(`Tiba di ${cell.name}`, false, 'arrival');
         playVocalExpression('joy');
         let validChoice = false; let targetPos = 20; let attempts = 0;
         
@@ -3082,15 +3601,20 @@
         return; 
       }
 
-      // TTS sederhana untuk semua petak lain: "Tiba di [Nama Petak], milik [Pemilik/Belum ada]"
-      let ownerName = "Belum ada";
-      if (cell.owner !== null) {
-        let owner = gameState.players.find(pl => pl.id === cell.owner);
-        ownerName = owner ? owner.name : "Pemain lain";
+      // TTS: untuk petak sudut jangan sebut pemilik, hanya untuk petak daerah yang bisa dibeli
+      let isBuyable = (cell.price > 0 && !cell.special && cell.type !== 'corner');
+      if(isBuyable){
+        let ownerName = "Belum ada";
+        if (cell.owner !== null) {
+          let owner = gameState.players.find(pl => pl.id === cell.owner);
+          ownerName = owner ? owner.name : "Pemain lain";
+        }
+        await speak(`Tiba di ${cell.name}, milik ${ownerName}`, false, 'arrival');
+      } else {
+        // Petak sudut (GO, PENJARA, PARKIR BEBAS, MASUK PENJARA) dan petak khusus tidak sebut pemilik
+        await speak(`Tiba di ${cell.name}`, false, 'arrival');
       }
-      await speak(`Tiba di ${cell.name}, milik ${ownerName}`, false, 'arrival');
       
-      // Blokir pembelian (aset baru dijual ke bank)
       if (cell.price > 0 && !cell.special && cell.owner === null) {
         if(cell.soldRound !== undefined && cell.soldRound !== null) {
           let cp = gameState.players[gameState.turnIndex];
@@ -3122,58 +3646,45 @@
             await showEventModal("Uang Tidak Cukup!", `Aset: ${cell.name}\nHarga: ${formatRupiah(cell.price)}\nUang Anda: ${formatRupiah(p.money)}\nAnda tidak memiliki cukup dana untuk membelinya.`, "❌", [{text: "Tutup", type: "btn-red"}], "#d63031", cell.img, 'arrival');
             return;
           }
-
           let purchaseModalMessage = `Aset Daerah: ${cell.name}\nHarga Beli: ${formatRupiah(cell.price)}\nSewa Dasar: ${formatRupiah(baseRent)}`;
           let res = await showEventModal("Beli Properti?", purchaseModalMessage, "📄", [{text: "Beli", type: "btn-green", value: "b"}, {text: "Lewati", type: "btn-red", value: "s"}], "#0984e3", cell.img, 'arrival');
           if(res === 'b' && p.money >= cell.price) { 
             playVocalExpression('joy');
-            await speak(`Membeli aset ${cell.name} seharga ${formatRupiah(cell.price)}.`, false, 'payment');
             p.money -= cell.price; cell.owner = p.id; 
           }
-          // Jika tidak ada transaksi (Lewati), giliran kocok berikutnya akan dibacakan via endTurn -> announceTurn
         } 
         else if (cell.owner === p.id && cell.color && !cell.mortgaged) {
           let houseCost = getHousePrice(cell); let hotelCost = getHotelPrice(cell);
           let canBuildHouse = cell.houses < 4 && cell.hotels === 0; let canBuildHotel = cell.houses === 4 && cell.hotels < 4;
-          let upgradeMsg = `Manajemen Bangunan di ${cell.name}\nRumah: ${cell.houses}/4 | Hotel: ${cell.hotels}/4\n`; let buttons = [{text: "Tutup", type: "btn-red", value: "close"}];
-
+          let upgradeMsg = `Manajemen Bangunan di ${cell.name}\nRumah: ${cell.houses}dari 4 | Hotel: ${cell.hotels}/4\n`; let buttons = [{text: "Tutup", type: "btn-red", value: "close"}];
           if(canBuildHouse && p.money >= houseCost) { upgradeMsg += `Harga 1 Rumah: ${formatRupiah(houseCost)}`; buttons.unshift({text: "Beli 1 Rumah", type: "btn-green", value: "house"}); } 
           else if(canBuildHotel && p.money >= hotelCost) { upgradeMsg += `Harga 1 Hotel: ${formatRupiah(hotelCost)}`; buttons.unshift({text: "Beli 1 Hotel", type: "btn-green", value: "hotel"}); } 
           else { upgradeMsg += `(Maksimal atau dana tidak cukup untuk peningkatan 1 tingkat sekaligus)`; }
-
           let upRes = await showEventModal("Peningkatan Aset", upgradeMsg, "🏗️", buttons, "#0984e3", cell.img, 'build');
           if(upRes === 'house' && p.money >= houseCost) { 
             await showCinematic('buildHouse', p, cell.name); p.money -= houseCost; cell.houses++; 
             playVocalExpression('joy');
-            await speak(`${p.name} sukses peningkatan aset 1 rumah yang ke ${cell.houses} di lokasi petak ${cell.name}.`, false, 'build'); 
           } 
           else if(upRes === 'hotel' && p.money >= hotelCost) { 
             await showCinematic('buildHotel', p, cell.name); p.money -= hotelCost; cell.hotels++; 
             playVocalExpression('joy');
-            await speak(`${p.name} sukses peningkatan aset 1 hotel yang ke ${cell.hotels} di lokasi petak ${cell.name}.`, false, 'build'); 
           }
-          // Jika tidak build, langsung giliran berikutnya via endTurn
         }
         else if (cell.owner !== p.id && !cell.mortgaged) {
           let owner = gameState.players.find(pl => pl.id === cell.owner); if(!owner) return;
           let rent = baseRent; let isMono = hasMonopolyGroup(owner.id, cell);
-
           if(cell.hotels > 0) rent = baseRent * (1 + 0.35 * cell.hotels);
           else if(cell.houses > 0) rent = baseRent * (1 + 0.25 * cell.houses);
           else if(isMono) rent = baseRent * 5;
           rent = Math.round(rent);
-
           let rentDesc = `Anda berhenti di properti milik ${owner.avatar} ${owner.name}.\nWilayah: ${cell.name}\nTarif Sewa Dasar: ${formatRupiah(baseRent)}`;
           if(isMono && cell.houses === 0 && cell.hotels === 0) rentDesc += `\n[👑 Bonus Monopoli Kompleks/Utilitas: Sewa jadi 5x Lipat!]`;
           rentDesc += `\nTotal Tagihan Sewa: ${formatRupiah(rent)}`;
-
           playVocalExpression('sad');
           await showEventModal("Bayar Sewa Properti!", rentDesc, "🤝", [{text: "Bayar ke " + owner.name, type: "btn-blue", value: "p"}], "#e84393", cell.img, 'payment');
           p.money -= rent; owner.money += rent;
         }
-        // Jika milik sendiri tapi digadai atau tidak bisa bangun, tidak ada transaksi -> langsung giliran kocok berikutnya
       }
-      // Untuk petak GO, Penjara kunjungan, dll tanpa transaksi, tidak perlu popup, langsung lanjut endTurn yang akan membacakan giliran kocok berikutnya
     } catch(e){ console.error(e); }
   }
 
