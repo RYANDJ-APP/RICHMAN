@@ -816,10 +816,46 @@
   }
   .leaderboard-row.rank-1 { background: linear-gradient(135deg, #f1c40f, #f39c12); color: white; border-radius: 5px;}
   .leaderboard-row.rank-bankrupt { background: #d63031; color: white; text-decoration: line-through; opacity: 0.6; }
+/* --- LOGIN OVERLAY --- */
+  #loginOverlay {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: radial-gradient(circle, #2f3640, #1e272e);
+    z-index: 10000; display: flex; align-items: center; justify-content: center;
+    flex-direction: column; color: white; transition: opacity 0.5s ease;
+  }
+  .login-box {
+    background: rgba(255,255,255,0.05); padding: 40px 30px; border-radius: 15px;
+    text-align: center; box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 2px solid #f1c40f; width: 90%; max-width: 350px;
+  }
+  .login-box h1 { margin-top: 0; color: #f1c40f; font-size: 24px; margin-bottom: 5px; }
+  .login-box p { font-size: 13px; color: #bdc3c7; margin-bottom: 25px; }
+  .login-box input {
+    width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #7f8c8d;
+    border-radius: 8px; font-size: 14px; background: rgba(0,0,0,0.2); color: white;
+    box-sizing: border-box;
+  }
+  .login-box input::placeholder { color: #95a5a6; }
+  .login-box button {
+    background: linear-gradient(135deg, #f1c40f, #f39c12); color: #2c3e50;
+    border: none; padding: 12px 20px; font-size: 16px; font-weight: 900;
+    border-radius: 8px; cursor: pointer; width: 100%; margin-top: 15px;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .login-box button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(241,196,15,0.4); }
 </style>
 </head>
 <body oncontextmenu="return false;" data-theme="light">
-
+  <div id="loginOverlay">
+    <div class="login-box">
+      <h1>MONOPOLI ULTIMATE</h1>
+      <p>Silakan login untuk mengakses permainan</p>
+      <input type="text" id="loginUsername" placeholder="Username" autocomplete="off">
+      <input type="password" id="loginPassword" placeholder="Password">
+      <button onclick="handleLogin()">LOGIN</button>
+    </div>
+  </div>
   <audio id="bgm" loop preload="auto" style="display:none;">
     <source src="https://cdn.pixabay.com/audio/2022/03/10/audio_c8c8a650f3.mp3?filename=video-game-music-loop-7-10099.mp3" type="audio/mpeg">
     <source src="https://cdn.pixabay.com/audio/2021/08/04/audio_0625c1539c.mp3?filename=8-bit-arcade-112199.mp3" type="audio/mpeg">
@@ -1111,6 +1147,7 @@
     </div>
     <div class="toolbar-right">
       <button class="toolbar-btn" style="background:#2d3436; color:white;" onclick="openSettings()">⚙️ Control Panel</button>
+      <button class="toolbar-btn" style="background:#c0392b; color:white;" onclick="handleLogout()">🚪 Logout</button>
     </div>
   </div>
   
@@ -3209,10 +3246,35 @@ async function handleLanded(p) {
     }
   }
 
-  
+  function handleLogin() {
+    const user = document.getElementById('loginUsername').value;
+    const pass = document.getElementById('loginPassword').value;
+    
+    // Logika login sederhana: pastikan field tidak kosong
+    if (user.trim() !== '' && pass.trim() !== '') {
+      const overlay = document.getElementById('loginOverlay');
+      overlay.style.opacity = '0';
+      setTimeout(() => { overlay.style.display = 'none'; }, 500);
+      localStorage.setItem('monopoliLoggedIn', 'true'); // Simpan sesi
+    } else {
+      alert('Username dan Password tidak boleh kosong!');
+    }
+  }
+
+  function handleLogout() {
+    if(confirm('Apakah Anda yakin ingin logout?')) {
+      localStorage.removeItem('monopoliLoggedIn');
+      location.reload(); // Refresh halaman untuk kembali ke menu login
+    }
+  }
   window.onload = () => { 
+    // Cek apakah pemain sudah login sebelumnya
+    if (localStorage.getItem('monopoliLoggedIn') === 'true') {
+      document.getElementById('loginOverlay').style.display = 'none';
+    }
+
     try {
-      initConfigUI(); try{initBGM(); initDecks(); init3DView();}catch(e){} 
+      initConfigUI(); try{initBGM(); initDecks(); init3DView();}catch(e){} s
       let selCount = document.getElementById('cfgPlayerCount'); if(selCount) selCount.value = "2"; updatePlayerVisibility();
 
       let hasSave = false; try { hasSave = !!localStorage.getItem('monopoliDB'); } catch(e){}
