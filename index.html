@@ -108,7 +108,7 @@
     height: calc(100vh - 55px);
     box-sizing: border-box;
     padding: 15px;
-    overflow: hidden;
+    overflow: visible;
   }
   /* Simetris horizontal: dashboard kiri, papan tengah, spacer kanan */
   .main-layout .asset-dashboard-side {
@@ -246,9 +246,9 @@
   }
 
   /* --- LAYOUT PAPAN --- */
-  .board { display: grid; grid-template-columns: var(--corner-size) repeat(9, var(--cell-w)) var(--corner-size); grid-template-rows: var(--corner-size) repeat(9, var(--cell-w)) var(--corner-size); gap: 2px; background: #2f3640; border: 4px solid #1e272e; box-shadow: 0 15px 40px rgba(0,0,0,0.4); position: relative; max-width: 98vw; max-height: 90vh; overflow: hidden;}
+  .board { display: grid; grid-template-columns: var(--corner-size) repeat(9, var(--cell-w)) var(--corner-size); grid-template-rows: var(--corner-size) repeat(9, var(--cell-w)) var(--corner-size); gap: 2px; background: #2f3640; border: 4px solid #1e272e; box-shadow: 0 15px 40px rgba(0,0,0,0.4); position: relative; max-width: none; max-height: none; overflow: visible; width: fit-content; height: fit-content; }
   .cell { background: var(--cell-bg); position: relative; box-sizing: border-box; display: flex; align-items: center; justify-content: center; overflow: visible; }
-  .board-container-3d { overflow: hidden; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+  .board-container-3d { overflow: visible; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
 
   .rot-bottom, .rot-top, .rot-left, .rot-right { 
     transform: none !important; 
@@ -2001,16 +2001,65 @@
       let vh = window.innerHeight;
       let isPortrait = vh > vw;
       let baseW = 60, baseH = 78, baseCorner = 78;
-      let scale = 1;
+      let baseBoard = (baseW*9 + baseCorner*2 + 22); // total board approx 718px
+      let toolbarH = 55;
+      let gap = 30;
+      let dashboardW = 300;
+      let isDashboardCollapsed = document.getElementById('assetDashboardSide')?.classList.contains('collapsed-holder');
+      
+      let availableW, availableH, scale = 1;
 
-      if (vw < 1024) {
-        if (isPortrait) { scale = Math.min(vw / 700, 0.85); scale = Math.max(scale, 0.4); } 
-        else { scale = Math.min(vh / 650, 0.85); scale = Math.max(scale, 0.4); }
+      if(isPortrait){
+        // Portrait: board width = vw - padding, height = vh - toolbar - dashboard
+        availableW = vw - 20;
+        // Jika tablet portrait, dashboard di bawah, jadi tinggi board = vh - toolbar - 250 (dashboard)
+        let dashH = (vw < 1024) ? 260 : 0;
+        availableH = vh - toolbarH - dashH - 40;
+        scale = Math.min(availableW / baseBoard, availableH / baseBoard, 1);
+        scale = Math.max(scale, 0.38);
+        // Di portrait, semua petak harus terlihat - jangan terlalu kecil
+        if(vw <= 768) scale = Math.min(scale, 0.92);
+        else scale = Math.min(scale, 0.88);
+      } else {
+        // Landscape: ini yang terpotong di tablet
+        // Hitung lebar tengah: vw - dashboard - spacer kanan - gap
+        let leftW = isDashboardCollapsed ? 70 : dashboardW;
+        let rightSpacer = (vw >= 1024) ? 300 : 20; // di desktop ada spacer kanan 300px untuk simetris
+        availableW = vw - leftW - rightSpacer - gap*2 - 20;
+        availableH = vh - toolbarH - 40;
+        // Untuk flat view, butuh scale yang pas agar tidak terpotong
+        scale = Math.min(availableW / baseBoard, availableH / baseBoard, 1);
+        scale = Math.max(scale, 0.35);
+        // Khusus landscape tablet (768-1024): paksa scale lebih kecil agar full terlihat
+        if(vw >= 768 && vw <= 1366){
+          scale = Math.min(availableW / baseBoard * 0.95, availableH / baseBoard * 0.95, 0.92);
+          scale = Math.max(scale, 0.32);
+        }
       }
 
       document.documentElement.style.setProperty('--cell-w', Math.round(baseW * scale) + 'px');
       document.documentElement.style.setProperty('--cell-h', Math.round(baseH * scale) + 'px');
       document.documentElement.style.setProperty('--corner-size', Math.round(baseCorner * scale) + 'px');
+      
+      // Pastikan board container tidak overflow hidden yang memotong
+      let boardContainer = document.getElementById('boardContainer3D');
+      if(boardContainer){
+        boardContainer.style.overflow = 'visible';
+        // Reset zoom jika scale terlalu kecil di landscape agar tidak double scale
+        if(!isPortrait && vw >= 768 && vw <= 1366 && currentBoardZoom > 1.2){
+          currentBoardZoom = 1;
+          boardContainer.style.transform = `scale(${currentBoardZoom})`;
+        }
+      }
+      
+      // Board juga overflow visible untuk flat
+      let board = document.getElementById('board');
+      if(board){
+        board.style.maxWidth = 'none';
+        board.style.maxHeight = 'none';
+        board.style.overflow = 'visible';
+      }
+      
     } catch(e) { logError(e); }
   }
 
@@ -3402,28 +3451,23 @@
       await handleBotLanding(bot);
     }
 
-    // Aturan dadu dobel berlaku sama untuk bot dan manusia - dengan ucapan khusus
+    // Aturan dadu dobel berlaku sama untuk bot dan manusia
     if (isDouble) {
       if(bot.inJail){
         endTurn();
       } else {
         if(doubleCount >= 3){
-          // 3x double masuk penjara - sama untuk bot, jangan katakan Tiba
+          // 3x double masuk penjara - sama untuk bot
           await showCinematic('jail', bot);
           playVocalExpression('cry');
-          await speak(`${bot.name} Tidak beruntung, Masuk Penjara`, true, 'jail');
-          await showEventModalNoSpeak("Masuk Penjara! 3x Dadu Dobel", `${bot.name} 3x dadu dobel berturut-turut! Masuk penjara!`, "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436", null);
+          await showEventModal("Masuk Penjara! 3x Dadu Dobel", `${bot.name} 3x dadu dobel berturut-turut! Masuk penjara!`, "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436", null, 'jail');
           bot.pos = 10; bot.inJail = true; bot.jailSkips = 0;
           if(tokenContainers[10] && playerElements[bot.id]) tokenContainers[10].appendChild(playerElements[bot.id]);
           doubleCount = 0;
-          await speak(`Silahkan giliran selanjutnya, lempar dadu`, false, 'arrival');
           endTurn();
         } else {
-          // Dapat giliran lagi - semua level sama, dengan ucapan luar biasa dadu kembar
-          playVocalExpression('joy');
-          await speak(`Luar biasa dadu kembar, ${bot.name} dapat tambahan giliran lempar dadu`, true, 'arrival');
-          await showEventModalNoSpeak("Dadu Kembar! - Bot", `Dadu Kembar! ${bot.name} dapat tambahan giliran lempar dadu!`, "⚡", [{text: "Lanjutkan", type: "btn-green"}], "#f1c40f");
-          await speak(`Silahkan giliran, ${bot.name}, lempar dadu`, false, 'arrival');
+          // Dapat giliran lagi - semua level sama
+          await speak(`${bot.name} dapat dadu dobel! Giliran lagi.`, false, 'arrival');
           // Delay sedikit sebelum lempar lagi
           setTimeout(()=>{ checkBotTurn(); }, 800);
           return;
