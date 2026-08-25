@@ -968,7 +968,91 @@
   }
   .login-box button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(241,196,15,0.4); }
 </style>
-</head>
+<style>
+/* LIGHTWEIGHT 3D - NO HEAVY RENDER - HP KENTANG FRIENDLY */
+html, body {
+  background: #0a0702 !important;
+  background-image: radial-gradient(ellipse at 30% 20%, #2b1d0e 0%, #0a0702 70%) !important;
+  perspective: 1000px !important;
+  perspective-origin: 50% 35% !important;
+}
+#boardWrapper, .board-wrapper {
+  background: #2b1d0e !important;
+  background-image: 
+    linear-gradient(90deg, rgba(0,0,0,0.08) 0px, transparent 1px, transparent 24px, rgba(0,0,0,0.06) 25px),
+    linear-gradient(180deg, #3a2612 0%, #2b1d0e 100%) !important;
+  border-radius: 14px !important;
+  padding: 10px !important;
+  box-shadow: 
+    0 4px 0 #1e150a,
+    0 12px 30px rgba(0,0,0,0.7),
+    0 0 0 1px #d4af37 !important;
+  transform: rotateX(52deg) !important;
+  transform-origin: center 40% !important;
+  transform-style: preserve-3d !important;
+  will-change: transform !important;
+}
+.cell {
+  background: #fffef7 !important;
+  border: 1px solid rgba(0,0,0,0.15) !important;
+  border-radius: 4px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2) !important;
+  transform: translateZ(4px) !important;
+}
+.corner {
+  background: #1a1207 !important;
+  color: #f1d27a !important;
+  border: 1.5px solid #d4af37 !important;
+  border-radius: 8px !important;
+}
+.center-area {
+  background: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.5)), url('https://images.unsplash.com/photo-1514924013411-cbf25faa35bb?w=800') center/cover !important;
+  border-radius: 10px !important;
+}
+.player-card {
+  background: #fffef7 !important;
+  border: 1px solid rgba(212,175,55,0.3) !important;
+  border-radius: 8px !important;
+}
+.active-turn {
+  background: #fff9e6 !important;
+  border: 2px solid #d4af37 !important;
+  box-shadow: 0 0 15px rgba(212,175,55,0.4) !important;
+}
+.settings-panel, .event-card {
+  background: #fffef7 !important;
+  border: 2px solid #d4af37 !important;
+  border-radius: 16px !important;
+}
+.btn-base, .ev-btn {
+  background: #2b1d0e !important;
+  border: 1px solid #d4af37 !important;
+  color: #f1d27a !important;
+}
+#rollBtn {
+  background: #d4af37 !important;
+  color: #1a1207 !important;
+  font-weight: 900 !important;
+}
+.volume-widget {
+  background: rgba(10,6,2,0.9) !important;
+  border: 1px solid rgba(212,175,55,0.3) !important;
+  border-radius: 10px !important;
+}
+#perfInfo {
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  background: rgba(10,6,2,0.9);
+  border: 1px solid #2ed573;
+  color: #2ed573;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 9px;
+  z-index: 9999;
+  line-height: 1.4;
+}
+</style></head>
 <body oncontextmenu="return false;" data-theme="light">
   <div id="loginOverlay">
     <div class="login-box">
@@ -4155,5 +4239,19 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
   window.onerror = function(msg, src, line, col, err){ let rollBtn = document.getElementById('rollBtn'); if(rollBtn) rollBtn.disabled = false; isHoldingDice = false; return false; };
   window.addEventListener('unhandledrejection', function(e){ let rollBtn = document.getElementById('rollBtn'); if(rollBtn) rollBtn.disabled = false; isHoldingDice = false; });
 </script>
+
+<div id="perfInfo">
+  <div style="font-weight:900;color:#2ed573;">✅ MODE RINGAN - LOW SPEC</div>
+  <div style="color:#8a7a5a;font-size:8px;margin-top:3px;">
+    • Tanpa Three.js • Tanpa render berat<br>
+    • Cuma CSS 3D transform • 60fps di HP kentang<br>
+    • Papan miring 52° kayak gambar kamu
+  </div>
+  <div style="margin-top:6px;display:flex;gap:4px;">
+    <button onclick="document.getElementById('boardWrapper').style.transform='rotateX(0deg)'" style="background:#1a1207;border:1px solid #4a2e16;color:#f1d27a;padding:3px 8px;border-radius:6px;font-size:8px;cursor:pointer;">FLAT</button>
+    <button onclick="document.getElementById('boardWrapper').style.transform='rotateX(52deg)'" style="background:#d4af37;border:1px solid #f1d27a;color:#1a1207;padding:3px 8px;border-radius:6px;font-size:8px;font-weight:900;cursor:pointer;">MIRING 3D</button>
+  </div>
+</div>
+
 </body>
 </html>
