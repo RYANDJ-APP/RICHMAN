@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Monopoli Ultimate - Double Dice & Human Vocal Expressions</title>
+<title>RICHMAN Ultimate - Double Dice & Human Vocal Expressions</title>
 <style>
   :root {
     --cell-w: 60px;
@@ -1830,15 +1830,16 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
   let was3DBeforeWalk = false;
   function autoEnter3D(){
     was3DBeforeWalk = is3DView;
-    // FIX FLICKER TABLET: jangan paksa masuk 3D jika sedang flat view - biarkan flat untuk hindari flicker petak
-    if(!is3DView){
-      // Di flat view, jangan auto toggle 3D, hanya set flag walking tanpa transform board
-      let board = document.getElementById('board');
-      if(board){ board.style.transition = 'none'; }
-      return;
-    }
     let board = document.getElementById('board');
-    if(board){ board.classList.add('auto-3d-walking'); board.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)'; }
+    if(!board) return;
+    // Transisi ke mode 3D harus bersamaan dengan aktifitas melangkah
+    board.classList.add('auto-3d-walking');
+    board.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+    if(!is3DView){
+      is3DView = true;
+      board.classList.add('view-3d');
+      try{ localStorage.setItem('monopoli3DView','true'); }catch(e){}
+    }
   }
   
   function autoExit3D(){
@@ -1962,9 +1963,8 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       if(toPos === 0){
         player.startCount = (player.startCount || 0) + 1;
         await showWalkingScene(player, fromPos, toPos, steps, i+1);
-        await speak(`Selamat memulai lagi, Anda mendapat gaji ${formatRupiahSpoken(200)}`, true, 'start');
-        triggerExpressionAndSpeak('joy', `Selamat ${player.name}`, 'start');
         player.money += 200; updateUI();
+        // Cukup sekali mengucapkan selamat melewati GO saat popup muncul, tidak ada pembacaan lagi
         await showEventModal("Melewati GO!", `Selamat anda Melewati Start dan mendapat gaji ${formatRupiah(200)}`, "💵", [{text: "Ambil Gaji", type: "btn-green"}], "#0984e3", null, 'start');
       }
       
@@ -2197,8 +2197,22 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
   window.addEventListener('resize', fitToDesktop);
 
   function initAudio() {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+    try{
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      // Unlock for github autoplay policy
+      if(audioCtx.state === 'suspended'){
+        let unlock = () => {
+          if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+          document.removeEventListener('click', unlock);
+          document.removeEventListener('touchstart', unlock);
+        };
+        document.addEventListener('click', unlock, {once:true});
+        document.addEventListener('touchstart', unlock, {once:true});
+      }
+    }catch(e){}
   }
 
   function playFootstepSound(pitch) {
@@ -2209,6 +2223,62 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       gain.gain.setValueAtTime(0.15 * vol, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
       osc.connect(gain); gain.connect(audioCtx.destination); osc.start(); osc.stop(audioCtx.currentTime + 0.08);
     } catch (e) {}
+  }
+  function playDiceRollSound(){
+    try {
+      initAudio(); let vol = getEffectVolume(); if(vol <= 0) return;
+      let now = audioCtx.currentTime;
+      // Cring efek: 2 osc tinggi dengan decay cepat + noise shake
+      for(let i=0;i<3;i++){
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(800 + i*400 + Math.random()*200, now);
+        osc.frequency.exponentialRampToValueAtTime(1200 + i*300, now + 0.15);
+        gain.gain.setValueAtTime(0.25 * vol, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3 + i*0.05);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(now + i*0.05); osc.stop(now + 0.35 + i*0.05);
+      }
+      // Shake low rumble
+      let osc2 = audioCtx.createOscillator();
+      let gain2 = audioCtx.createGain();
+      osc2.type = 'square';
+      osc2.frequency.setValueAtTime(120, now);
+      osc2.frequency.linearRampToValueAtTime(60, now + 0.2);
+      gain2.gain.setValueAtTime(0.15 * vol, now);
+      gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+      osc2.connect(gain2); gain2.connect(audioCtx.destination);
+      osc2.start(now); osc2.stop(now + 0.25);
+    } catch(e){}
+  }
+  function playBuildSound(){
+    try {
+      initAudio(); let vol = getEffectVolume(); if(vol <= 0) return;
+      let now = audioCtx.currentTime;
+      // Efek membangun: palu ketok 3x + cring naik
+      for(let i=0;i<3;i++){
+        let osc = audioCtx.createOscillator();
+        let gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(300, now + i*0.18);
+        osc.frequency.exponentialRampToValueAtTime(150, now + i*0.18 + 0.08);
+        gain.gain.setValueAtTime(0.3 * vol, now + i*0.18);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + i*0.18 + 0.1);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(now + i*0.18); osc.stop(now + i*0.18 + 0.12);
+      }
+      // Cring sukses bangun
+      let osc2 = audioCtx.createOscillator();
+      let gain2 = audioCtx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(600, now + 0.55);
+      osc2.frequency.exponentialRampToValueAtTime(1200, now + 0.8);
+      gain2.gain.setValueAtTime(0.25 * vol, now + 0.55);
+      gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.85);
+      osc2.connect(gain2); gain2.connect(audioCtx.destination);
+      osc2.start(now + 0.55); osc2.stop(now + 0.9);
+    } catch(e){}
   }
 
   function playVocalExpression(type) {
@@ -3161,10 +3231,15 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     let btn = document.getElementById('rollBtn');
     if(btn && btn.disabled) return;
 
+    // Bunyi cring/efek dadu harus bersamaan dengan animasi - play segera dalam gesture
+    try{ initAudio(); playDiceRollSound(); }catch(e){}
+
     try {
       if(btn) btn.style.background = "#f1c40f";
       let overlayDice = document.getElementById('diceAnimOverlay');
       if (overlayDice) overlayDice.style.display = 'flex';
+      // Play lagi untuk memastikan terdengar di github (resume setelah overlay)
+      try{ playDiceRollSound(); }catch(e){}
       await new Promise(r => setTimeout(r, 1500));
       if (overlayDice) overlayDice.style.display = 'none';
 
@@ -3712,7 +3787,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     // Pajak - wajib bayar sama seperti manusia - TTS baru
     if (cell.special === 'tax') {
       playVocalExpression('sad');
-      await speak(`${bot.name} silahkan bayar ${formatRupiahSpoken(cell.price)}`, true, 'payment');
+      await speak(`${bot.name} silahkan bayar pajak ${formatRupiahSpoken(cell.price)}`, true, 'payment');
       await showEventModal("Bayar Pajak - Bot", `${bot.name} bayar pajak ${formatRupiah(cell.price)}`, "💸", [{text: "Bayar", type: "btn-red"}], "#d63031", null, 'payment');
       bot.money -= cell.price;
       return;
@@ -3969,7 +4044,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       if (cell.special === 'tax') {
         playVocalExpression('sad');
         // TTS baru: Pemain? silahkan bayar pajak ?anda
-        await speak(`${p.name} silahkan bayar ${formatRupiahSpoken(cell.price)}`, true, 'payment');
+        await speak(`${p.name} silahkan bayar pajak ${formatRupiahSpoken(cell.price)}`, true, 'payment');
         await showEventModal("Bayar Pajak", `Tagihan pajak Anda sebesar ${formatRupiah(cell.price)}`, "💸", [{text: "Bayar", type: "btn-red"}], "#d63031", null, 'payment');
         p.money -= cell.price;
         return;
@@ -4008,13 +4083,19 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
           let upRes = await showEventModal("Peningkatan Aset", upgradeMsg, "🏗️", buttons, "#0984e3", cell.img, 'build');
           if(upRes === 'house' && p.money >= houseCost) { 
             let oldHouse = cell.houses; let newHouse = oldHouse + 1;
-            await showCinematic('buildHouse', p, cell.name); p.money -= houseCost; cell.houses = newHouse; 
+            try{ playBuildSound(); }catch(e){}
+            await showCinematic('buildHouse', p, cell.name); 
+            try{ playBuildSound(); }catch(e){}
+            p.money -= houseCost; cell.houses = newHouse; 
             playVocalExpression('joy');
             await speak(`Sukses pada peningkatan aset penambahan rumah ke ${newHouse} dari ${oldHouse} menjadi ${newHouse} milik ${p.name} dipetak ${cell.name}`, true, 'build');
           } 
           else if(upRes === 'hotel' && p.money >= hotelCost) { 
             let oldHotel = cell.hotels; let newHotel = oldHotel + 1;
-            await showCinematic('buildHotel', p, cell.name); p.money -= hotelCost; cell.hotels = newHotel; 
+            try{ playBuildSound(); }catch(e){}
+            await showCinematic('buildHotel', p, cell.name); 
+            try{ playBuildSound(); }catch(e){}
+            p.money -= hotelCost; cell.hotels = newHotel; 
             playVocalExpression('joy');
             await speak(`Sukses pada peningkatan aset penambahan hotel ke ${newHotel} dari ${oldHotel} menjadi ${newHotel} milik ${p.name} dipetak ${cell.name}`, true, 'build');
           }
