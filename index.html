@@ -108,7 +108,7 @@
     height: calc(100vh - 55px);
     box-sizing: border-box;
     padding: 15px;
-    overflow: visible;
+    overflow: hidden;
   }
   /* Simetris horizontal: dashboard kiri, papan tengah, spacer kanan */
   .main-layout .asset-dashboard-side {
@@ -246,9 +246,9 @@
   }
 
   /* --- LAYOUT PAPAN --- */
-  .board { display: grid; grid-template-columns: var(--corner-size) repeat(9, var(--cell-w)) var(--corner-size); grid-template-rows: var(--corner-size) repeat(9, var(--cell-w)) var(--corner-size); gap: 2px; background: #2f3640; border: 4px solid #1e272e; box-shadow: 0 15px 40px rgba(0,0,0,0.4); position: relative; max-width: none; max-height: none; overflow: visible; width: fit-content; height: fit-content; }
+  .board { display: grid; grid-template-columns: var(--corner-size) repeat(9, var(--cell-w)) var(--corner-size); grid-template-rows: var(--corner-size) repeat(9, var(--cell-w)) var(--corner-size); gap: 2px; background: #2f3640; border: 4px solid #1e272e; box-shadow: 0 15px 40px rgba(0,0,0,0.4); position: relative; max-width: 98vw; max-height: 90vh; overflow: hidden;}
   .cell { background: var(--cell-bg); position: relative; box-sizing: border-box; display: flex; align-items: center; justify-content: center; overflow: visible; }
-  .board-container-3d { overflow: visible; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+  .board-container-3d { overflow: hidden; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
 
   .rot-bottom, .rot-top, .rot-left, .rot-right { 
     transform: none !important; 
@@ -1687,48 +1687,65 @@
     } catch(e){ logError(e); }
   }
   
-  function getSessions(){ try { return JSON.parse(localStorage.getItem('monopoliSessions')||'[]'); } catch(e){ return []; } }
+    function getSessions(){ try { return JSON.parse(localStorage.getItem('monopoliSessions')||'[]'); } catch(e){ return []; } }
   function saveSessions(list){ localStorage.setItem('monopoliSessions', JSON.stringify(list)); }
-  function saveSession(){
+  async function saveSession(){
     try {
       let nameInput = document.getElementById('sessionNameInput');
       let name = nameInput.value.trim() || ("Sesi "+ new Date().toLocaleString('id-ID'));
       let sessions = getSessions();
-      let data = JSON.parse(JSON.stringify(gameState));
-      sessions.unshift({ id: Date.now(), name: name, date: new Date().toISOString(), data: data });
-      if(sessions.length>20) sessions = sessions.slice(0,20);
+      sessions.push({id: Date.now(), name: name, data: JSON.parse(JSON.stringify(gameState)), date: new Date().toISOString()});
       saveSessions(sessions); nameInput.value=''; updateSessionList();
-      alert("Sesi '"+name+"' berhasil disimpan!");
-    } catch(e){ alert("Gagal simpan sesi: "+e.message); }
+      await showEventModalNoSpeak("Sesi Disimpan", "Sesi '"+name+"' berhasil disimpan!", "💾", [{text:"OK", type:"btn-green"}]);
+    } catch(e){ await showEventModalNoSpeak("Gagal Simpan", "Gagal simpan sesi: "+e.message, "❌", [{text:"OK", type:"btn-red"}]); }
   }
   function updateSessionList(){
-    let container = document.getElementById('sessionList'); if(!container) return;
+    let container = document.getElementById('sessionList');
+    if(!container) return;
     let sessions = getSessions();
-    if(sessions.length===0){ container.innerHTML='<p style="text-align:center; color:#999;">Belum ada sesi tersimpan</p>'; return; }
+    if(sessions.length===0){ container.innerHTML = "<div style='text-align:center; color:#636e72; padding:20px;'>Belum ada sesi tersimpan</div>"; return; }
     container.innerHTML = sessions.map(s=>`
-      <div style="display:flex; justify-content:space-between; align-items:center; background:#f1f2f6; padding:8px; border-radius:5px; margin-bottom:5px;">
-        <div><strong>${s.name}</strong><br><small>${new Date(s.date).toLocaleString('id-ID')}</small><br><small>${s.data.players?.length||0} pemain - Giliran ${s.data.turnIndex+1||1}</small></div>
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:10px; border:1px solid #dfe6e9; border-radius:8px; margin-bottom:8px; background:white;">
+        <div><strong>${s.name}</strong><br><small>${new Date(s.date).toLocaleString('id-ID')}</small></div>
         <div style="display:flex; gap:5px;">
-          <button class="btn-action-sm" style="background:#0984e3;" onclick="loadSession(${s.id})">Muat</button>
-          <button class="btn-action-sm" style="background:#d63031;" onclick="deleteSession(${s.id})">Hapus</button>
+          <button class="toolbar-btn" style="background:#0984e3; color:white; padding:5px 10px; font-size:11px;" onclick="loadSession(${s.id})">Muat</button>
+          <button class="toolbar-btn" style="background:#d63031; color:white; padding:5px 10px; font-size:11px;" onclick="deleteSession(${s.id})">Hapus</button>
         </div>
       </div>
     `).join('');
   }
-  function loadSession(id){
+  async function loadSession(id){
     try {
       let sessions = getSessions(); let found = sessions.find(s=>s.id===id);
-      if(!found){ alert("Sesi tidak ditemukan"); return; }
-      if(!confirm("Muat sesi '"+found.name+"'? Progress sekarang akan tertimpa.")) return;
-      gameState = found.data; applyStateToEngine(); closeSessionModal(); closeSettings(); announceTurn();
-      alert("Sesi '"+found.name+"' berhasil dimuat!");
-    } catch(e){ alert("Gagal muat sesi: "+e.message); }
+      if(!found){ await showEventModalNoSpeak("Tidak Ditemukan", "Sesi tidak ditemukan", "❌", [{text:"OK", type:"btn-red"}]); return; }
+      let conf = await showEventModal("Muat Sesi?", "Muat sesi '"+found.name+"'? Progress sekarang akan hilang.", "❓", [{text:"Ya, Muat", type:"btn-green", value:"yes"}, {text:"Batal", type:"btn-red", value:"no"}]);
+      if(conf !== "yes") return;
+      try {
+        gameState = JSON.parse(JSON.stringify(found.data));
+        localStorage.setItem('monopoliDB', JSON.stringify(gameState));
+        applyStateToEngine(); closeSessionModal(); closeSettings(); announceTurn();
+        await showEventModalNoSpeak("Sesi Dimuat", "Sesi '"+found.name+"' berhasil dimuat!", "✅", [{text:"OK", type:"btn-green"}]);
+      } catch(e){ await showEventModalNoSpeak("Gagal Muat", "Gagal muat sesi: "+e.message, "❌", [{text:"OK", type:"btn-red"}]); }
+    } catch(e){ await showEventModalNoSpeak("Error", "Gagal: "+e.message, "❌", [{text:"OK", type:"btn-red"}]); }
   }
-  function deleteSession(id){
-    if(!confirm("Hapus sesi ini?")) return;
-    let sessions = getSessions().filter(s=>s.id!==id); saveSessions(sessions); updateSessionList();
+  async function deleteSession(id){
+    let sessions = getSessions();
+    let target = sessions.find(s=>s.id===id);
+    let sessName = target?.name||'';
+    let conf = await showEventModal("Hapus Sesi?", "Hapus sesi '"+sessName+"'? ", "🗑️", [{text:"Hapus", type:"btn-red", value:"yes"}, {text:"Batal", type:"btn-blue", value:"no"}]);
+    if(conf !== "yes") return;
+    let filtered = getSessions().filter(s=>s.id!==id); saveSessions(filtered); updateSessionList();
   }
-  function openSessionModal(){ document.getElementById('sessionModal').style.display='flex'; updateSessionList(); }
+  function openSessionModal(){
+    let modal = document.getElementById('sessionModal');
+    if(modal){ modal.style.display='flex'; updateSessionList(); }
+  }
+  function closeSessionModal(){
+    let modal = document.getElementById('sessionModal');
+    if(modal) modal.style.display='none';
+  }
+
+function openSessionModal(){ document.getElementById('sessionModal').style.display='flex'; updateSessionList(); }
   function closeSessionModal(){ document.getElementById('sessionModal').style.display='none'; }
 
   function showTariffModal(cellIdx){
@@ -1795,10 +1812,11 @@
     } catch(e){}
   }
 
-  function clearSave(){
-    if(confirm("Hapus semua save lokal?")){
+  async function clearSave(){
+    let conf = await showEventModal("Hapus Save?", "Hapus semua save lokal?", "🗑️", [{text:"Hapus", type:"btn-red", value:"yes"}, {text:"Batal", type:"btn-blue", value:"no"}]);
+    if(conf === "yes"){
       localStorage.removeItem('monopoliDB');
-      alert("Save dihapus, reload halaman"); location.reload();
+      await showEventModalNoSpeak("Save Dihapus", "Save dihapus, reload halaman", "🗑️", [{text:"OK", type:"btn-red"}]); location.reload();
     }
   }
   function logError(msg){
@@ -1812,7 +1830,13 @@
   let was3DBeforeWalk = false;
   function autoEnter3D(){
     was3DBeforeWalk = is3DView;
-    if(!is3DView) toggle3DView();
+    // FIX FLICKER TABLET: jangan paksa masuk 3D jika sedang flat view - biarkan flat untuk hindari flicker petak
+    if(!is3DView){
+      // Di flat view, jangan auto toggle 3D, hanya set flag walking tanpa transform board
+      let board = document.getElementById('board');
+      if(board){ board.style.transition = 'none'; }
+      return;
+    }
     let board = document.getElementById('board');
     if(board){ board.classList.add('auto-3d-walking'); board.style.transition = 'transform 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94)'; }
   }
@@ -1820,8 +1844,12 @@
   function autoExit3D(){
     setTimeout(()=>{
       let board = document.getElementById('board');
-      if(board){ board.classList.remove('auto-3d-walking'); board.style.transform = ''; }
-      if(!was3DBeforeWalk && is3DView) toggle3DView();
+      if(board){ board.classList.remove('auto-3d-walking'); board.style.transform = ''; board.style.transition = ''; }
+      // Hanya keluar 3D jika sebelumnya flat - tapi untuk flat, kita tidak pernah masuk 3D jadi tidak perlu toggle
+      if(!was3DBeforeWalk && is3DView && document.getElementById('board')?.classList.contains('auto-3d-walking')){
+        // Jangan auto toggle di tablet flat untuk hindari flicker
+        if(window.innerWidth > 768) toggle3DView();
+      }
     }, 1500);
   }
 
@@ -1840,12 +1868,15 @@
   function updateBoardPositionForWalk(currentPos, totalSteps, stepIndex){
     try {
       let board = document.getElementById('board'); if(!board || !is3DView) return;
+      // FIX FLICKER: di tablet, kurangi rotasi dan translate yang menyebabkan flicker petak
+      let isTablet = window.innerWidth >= 768 && window.innerWidth <= 1366;
+      if(isTablet && !is3DView) return; // flat tablet jangan transform
       let coord = getCellCoord(currentPos);
       let progress = stepIndex / totalSteps;
-      let stepRotation = Math.sin(progress * Math.PI * 4) * 3;
-      let transX = -coord.x * 40; 
-      let transY = -coord.y * 40; 
-      board.style.transform = `rotateX(55deg) rotateZ(${stepRotation}deg) translate(${transX}%, ${transY}%) scale(1.6)`;
+      let stepRotation = isTablet ? Math.sin(progress * Math.PI * 2) * 1.5 : Math.sin(progress * Math.PI * 4) * 3;
+      let transX = -coord.x * (isTablet ? 20 : 40); 
+      let transY = -coord.y * (isTablet ? 20 : 40); 
+      board.style.transform = `rotateX(55deg) rotateZ(${stepRotation}deg) translate(${transX}%, ${transY}%) scale(${isTablet ? 1.3 : 1.6})`;
     } catch(e){}
   }
 
@@ -1931,6 +1962,7 @@
       if(toPos === 0){
         player.startCount = (player.startCount || 0) + 1;
         await showWalkingScene(player, fromPos, toPos, steps, i+1);
+        await speak(`Selamat memulai lagi, Anda mendapat gaji ${formatRupiahSpoken(200)}`, true, 'start');
         triggerExpressionAndSpeak('joy', `Selamat ${player.name}`, 'start');
         player.money += 200; updateUI();
         await showEventModal("Melewati GO!", `Selamat anda Melewati Start dan mendapat gaji ${formatRupiah(200)}`, "💵", [{text: "Ambil Gaji", type: "btn-green"}], "#0984e3", null, 'start');
@@ -2213,7 +2245,7 @@
   }
 
   const initialBoardMap = [
-    { type: 'corner', name: 'GO', class: 'c-br', nuance: 'Start - Gaji Rp 200rb', landmark: '🏁', company: 'Bank Indonesia' }, 
+    { type: 'corner', name: 'GO', class: 'c-br', nuance: 'Start - Gaji Rp 200 Juta', landmark: '🏁', company: 'Bank Indonesia' }, 
     { name: 'Banda Aceh', color: '#955436', price: 60, owner: null, houses: 0, hotels: 0, mortgaged: false, mortgageRound: 0, img: 'https://images.unsplash.com/photo-1555400038-63f5ba517a47?w=400', nuance: 'Serambi Mekkah', landmark: '🕌', company: 'Masjid Raya' },
     { name: 'Dana Umum', icon: '🎁', price: 0, special: 'dana', nuance: 'Bantuan Sosial', landmark: '🎁', company: 'Kemensos' },
     { name: 'Medan', color: '#955436', price: 60, owner: null, houses: 0, hotels: 0, mortgaged: false, mortgageRound: 0, img: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=400', nuance: 'Kota Durian', landmark: '🍈', company: 'Istana Maimun' },
@@ -2256,7 +2288,7 @@
   ];
 
   const chanceCards = [
-    { title: "BLT UMKM Cair", text: "Bantuan UMKM dari Kemenkop cair Rp 500rb. Rejeki pedagang kecil!", amount: 500, type: "joy", getOutCard: false },
+    { title: "BLT UMKM Cair", text: "Bantuan UMKM dari Kemenkop cair Rp 500 Juta. Rejeki pedagang kecil!", amount: 500, type: "joy", getOutCard: false },
     { title: "Menang Lelang IKN", text: "Proyek Ibu Kota Nusantara, Anda menang tender pembangunan jalan.", amount: 450, type: "joy", getOutCard: false },
     { title: "Panen Raya Padi", text: "Panen raya di Karawang berhasil, harga gabah naik tinggi.", amount: 400, type: "joy", getOutCard: false },
     { title: "THR BUMN Cair", text: "THR dari BUMN tempat Anda kerja cair lebih awal.", amount: 350, type: "joy", getOutCard: false },
@@ -2275,7 +2307,7 @@
     { title: "Pajak Motor Nunggak", text: "Bayar pajak motor nunggak 3 tahun plus denda.", amount: -250, type: "sad", getOutCard: false },
     { title: "Sengketa Tanah", text: "Kalah sengketa tanah warisan di BPN.", amount: -300, type: "sad", getOutCard: false },
     { title: "Hajatan Tetangga", text: "Wajib kondangan hajatan tetangga 3 hari berturut-turut.", amount: -350, type: "sad", getOutCard: false },
-    { title: "Mudik Lebaran", text: "Ongkos mudik Jakarta-Surabaya naik 2x lipat.", amount: -400, type: "sad", getOutCard: false }
+    { title: "Mudik Lebaran", text: "Ongkos mudik Jakarta-Surabaya naik 2 Kali lipat.", amount: -400, type: "sad", getOutCard: false }
   ];
 
   function shuffleArray(arr){
@@ -2295,7 +2327,7 @@
 
   const communityCards = [
     { title: "Dividen BUMDes", text: "BUMDes desa untung besar dari wisata desa.", amount: 500, type: "joy", getOutCard: false },
-    { title: "Arisan RT Cair", text: "Arisan RT 05 cair Rp 400rb, rejeki ibu-ibu!", amount: 400, type: "joy", getOutCard: false },
+    { title: "Arisan RT Cair", text: "Arisan RT 05 cair Rp 400 Juta, rejeki ibu-ibu!", amount: 400, type: "joy", getOutCard: false },
     { title: "Panen Durian", text: "Kebun durian Montong di Medan panen super.", amount: 350, type: "joy", getOutCard: false },
     { title: "THR Kades", text: "Kades bagi THR untuk warga kurang mampu.", amount: 300, type: "joy", getOutCard: false },
     { title: "PKH Cair", text: "Bantuan PKH tahap 3 cair tepat waktu.", amount: 250, type: "joy", getOutCard: false },
@@ -2316,16 +2348,96 @@
     { title: "Kondangan Nikahan", text: "Kondangan nikahan tetangga 3 tempat sehari.", amount: -400, type: "sad", getOutCard: false }
   ];
 
-  function formatRupiah(ribuan) { return "Rp " + (ribuan * 1000).toLocaleString('id-ID'); }
+  function formatRupiah(ribuan) {
+    // Skala baru: Jt -> Juta, M -> Milyar, hilangkan .000
+    if(ribuan >= 1000){
+      let milyar = ribuan / 1000;
+      if(Number.isInteger(milyar)){
+        return "Rp " + milyar + " Milyar";
+      } else {
+        return "Rp " + milyar.toString().replace('.', ',') + " Milyar";
+      }
+    } else {
+      return "Rp " + ribuan + " Juta";
+    }
+  }
+  function formatRupiahSpoken(ribuan){
+    // Untuk TTS: 240 -> 240 Juta rupiah, 1500 -> 1 Koma 5 Milyar rupiah
+    if(ribuan >= 1000){
+      let milyar = ribuan / 1000;
+      let milyarStr = milyar.toString();
+      if(milyarStr.includes('.')){
+        let parts = milyarStr.split('.');
+        let koma = parts[1];
+        // Baca koma per digit: 5 -> Koma 5, 25 -> Koma 2 5? User minta 1 Koma 5 milyar
+        // Kita baca digit per digit dengan spasi
+        let komaSpoken = koma.split('').join(' ');
+        return parts[0] + " Koma " + komaSpoken + " Milyar rupiah";
+      } else {
+        return milyarStr + " Milyar rupiah";
+      }
+    } else {
+      return ribuan + " Juta rupiah";
+    }
+  }
   function openSettings() { let m=document.getElementById('settingsModal'); if(m){ m.style.display='flex'; } initConfigUI(); initBGM(); }
   function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
   function openAssetsModal() { document.getElementById('assetsModal').style.display = 'flex'; updateAssetsModalTable(); }
   function closeAssetsModal() { document.getElementById('assetsModal').style.display = 'none'; }
   function showStatus(msg) { const el=document.getElementById('dbStatus'); if(el) el.innerText = msg; }
   
+  function angkaToKata(n){
+    let kata = ["nol","satu","dua","tiga","empat","lima","enam","tujuh","delapan","sembilan","sepuluh","sebelas"];
+    if(n < 12) return kata[n];
+    if(n < 20) return kata[n-10] + " belas";
+    if(n < 100){
+      let pul = Math.floor(n/10);
+      let sisa = n % 10;
+      return (pul === 1 ? "sepuluh" : kata[pul] + " puluh") + (sisa > 0 ? " " + kata[sisa] : "");
+    }
+    if(n < 1000){
+      let rat = Math.floor(n/100);
+      let sisa = n % 100;
+      let ratKata = rat === 1 ? "seratus" : kata[rat] + " ratus";
+      return ratKata + (sisa > 0 ? " " + angkaToKata(sisa) : "");
+    }
+    return n.toString();
+  }
+  function convertRpToSpoken(text){
+    return text.replace(/Rp\.?\s*(\d+(?:[\.,]\d+)?)\s*(Jt\.?|Juta|M\.?|Milyar|Miliar|rb)?/gi, (match, numStr, unitRaw) => {
+      let unit = (unitRaw || "").toLowerCase();
+      let isMilyar = unit.startsWith('m');
+      let unitSpoken = isMilyar ? "Milyar" : "Juta";
+      let originalNum = numStr;
+      if(originalNum.includes(',') || (originalNum.includes('.') && !/^\d{1,3}(\.\d{3})+$/.test(originalNum))){
+        let parts = originalNum.replace('.', ',').split(',');
+        let intPart = parts[0];
+        let decPart = parts[1] || "";
+        let intSpoken = angkaToKata(parseInt(intPart,10) || 0);
+        let decSpoken = decPart.split('').map(d => angkaToKata(parseInt(d,10) || 0)).join(' ');
+        return intSpoken + " Koma " + decSpoken + " " + unitSpoken + " Rupiah";
+      } else {
+        let n = parseInt(originalNum.replace(/\D/g,''),10);
+        if(isNaN(n)) n = 0;
+        return angkaToKata(n) + " " + unitSpoken + " Rupiah";
+      }
+    });
+  }
+  function convertSlashToSpoken(text){
+    let isDice = text.toLowerCase().includes('dadu') || text.includes('🎲');
+    return text.replace(/(\d+)\s*\/\s*(\d+)/g, (match, a, b) => {
+      let numA = parseInt(a, 10);
+      let numB = parseInt(b, 10);
+      let connector = isDice ? " dan " : " dari ";
+      return angkaToKata(numA) + connector + angkaToKata(numB);
+    });
+  }
   function speak(text, interrupt = false, category = 'general') {
     return new Promise((resolve) => {
       try {
+        // FIX: ubah pembacaan Rp 200 Juta jadi 200 Juta Rupiah, dan 1/4 jadi satu dari empat
+        let spokenText = convertRpToSpoken(text);
+        spokenText = convertSlashToSpoken(spokenText);
         let voiceCheckbox = document.getElementById('cfgVoice');
         if(!voiceCheckbox || !voiceCheckbox.checked || !('speechSynthesis' in window)) { resolve(); return; }
 
@@ -2345,7 +2457,7 @@
         
         if(interrupt) window.speechSynthesis.cancel(); 
         
-        const utterance = new SpeechSynthesisUtterance(text);
+        const utterance = new SpeechSynthesisUtterance(spokenText);
         utterance.lang = 'id-ID'; 
         utterance.rate = 1.05; 
         utterance.volume = getVocalVolume();  
@@ -2455,7 +2567,7 @@
     } catch(e){ logError(e); }
   }
 
-  function startNewGame() {
+  async function startNewGame() {
     forceFullscreen();
     try {
       initAudio(); readSettingsForm();
@@ -2466,14 +2578,14 @@
     } catch(e){ 
       let rollBtn = document.getElementById('rollBtn'); 
       if(rollBtn) rollBtn.disabled = false; 
-      alert("Gagal mulai: "+e.message);
+      await showEventModalNoSpeak("Gagal Mulai", "Gagal mulai: "+e.message, "❌", [{text:"OK", type:"btn-red"}]);
     }
   }
 
   function applyStateToEngine() { buildBoard(); initTokens(); initDecks(); updateUI(); }
   function saveLocalState() { try { localStorage.setItem('monopoliDB', JSON.stringify(gameState)); } catch(e){ showStatus("❌ Gagal simpan lokal"); } }
 
-  function loadLocalState() {
+  async function loadLocalState() {
     try {
       initAudio(); readSettingsForm(); let saved = localStorage.getItem('monopoliDB');
       if(saved) {
@@ -2481,19 +2593,19 @@
         if(!gameState.boardData || !gameState.players) throw new Error("Save corrupt");
         applyStateToEngine(); closeSettings(); announceTurn();
         checkBotTurn();
-      } else { alert("Tidak ada data simpanan lokal."); openSettings(); }
+      } else { await showEventModalNoSpeak("Tidak Ada Data", "Tidak ada data simpanan lokal.", "ℹ️", [{text:"OK", type:"btn-blue"}]); openSettings(); }
     } catch(e){
-      alert("Save corrupt, mulai baru"); localStorage.removeItem('monopoliDB'); openSettings();
+      await showEventModalNoSpeak("Save Corrupt", "Save corrupt, mulai baru", "⚠️", [{text:"OK", type:"btn-red"}]); localStorage.removeItem('monopoliDB'); openSettings();
     }
   }
 
   async function saveToCloud() {
-    let url = document.getElementById('cfgDbUrl').value; if(!url) return alert("Masukkan URL Web App Spreadsheet!"); showStatus("⏳ Menyimpan ke Spreadsheet...");
+    let url = document.getElementById('cfgDbUrl').value; if(!url) { await showEventModalNoSpeak("URL Kosong", "Masukkan URL Web App Spreadsheet!", "🔗", [{text:"OK", type:"btn-red"}]); return; } showStatus("⏳ Menyimpan ke Spreadsheet...");
     try { await fetch(url, { method: "POST", mode: 'no-cors', body: JSON.stringify(gameState) }); showStatus("☁️✅ Berhasil disinkronkan!"); saveLocalState(); } catch (e) { showStatus("❌ Gagal menyimpan ke awan."); }
   }
 
   async function loadFromCloud() {
-    let url = document.getElementById('cfgDbUrl').value; if(!url) return alert("Masukkan URL Web App Spreadsheet!"); showStatus("⏳ Mengunduh dari Spreadsheet...");
+    let url = document.getElementById('cfgDbUrl').value; if(!url) { await showEventModalNoSpeak("URL Kosong", "Masukkan URL Web App Spreadsheet!", "🔗", [{text:"OK", type:"btn-red"}]); return; } showStatus("⏳ Mengunduh dari Spreadsheet...");
     try { let res = await fetch(url); let data = await res.json(); if(data && data.players) { gameState = data; readSettingsForm(); applyStateToEngine(); closeSettings(); announceTurn(); showStatus("☁️✅ Load berhasil"); } } catch (e) { showStatus("❌ Gagal memuat data awan."); }
   }
 
@@ -2753,7 +2865,7 @@
       await showEventModal("Pinjaman Dicairkan", `Dana pinjaman sebesar ${formatRupiah(borrowAmount)} telah dimasukkan ke saldo ${cp.name}.\nSaldo utang bank kini: ${formatRupiah(cp.bankLoan)}`, "💵", [{text: "Selesai", type: "btn-green"}]);
     } else if (loanChoice === 'pay') {
       let payAmount = Math.min(cp.money, currentDebt);
-      if(payAmount <= 0) { alert("Saldo uang tunai Anda tidak cukup untuk membayar utang."); return; }
+      if(payAmount <= 0) { await showEventModalNoSpeak("Uang Tidak Cukup", "Saldo uang tunai Anda tidak cukup untuk membayar utang.", "❌", [{text:"OK", type:"btn-red"}]); return; }
       cp.money -= payAmount; cp.bankLoan -= payAmount;
       triggerExpressionAndSpeak('joy', `${cp.name} membayar cicilan utang bank sebesar ${formatRupiah(payAmount)}.`);
       updateUI(); saveLocalState();
@@ -2765,7 +2877,7 @@
   async function openGetOutCardModal() {
     let cp = gameState.players[gameState.turnIndex]; let totalCards = (cp.getOutCards.chance || 0) + (cp.getOutCards.community || 0);
     if(totalCards <= 0) { await showEventModal("Kartu Bebas Penjara", `${cp.name}, Anda tidak memiliki Kartu Bebas Penjara saat ini.`, "🎫", [{text: "Tutup", type: "btn-blue"}], "#e17055"); return; }
-    let action = await showEventModal("Manajemen Kartu Bebas Penjara", `${cp.name}, Anda memiliki ${totalCards} Kartu Bebas Penjara.\nPilih tindakan yang ingin dilakukan:`, "🎫", [{text: "Jual 1 Kartu (Rp 100rb)", type: "btn-orange", value: "sell"}, {text: "Tutup", type: "btn-blue", value: "close"}], "#e17055");
+    let action = await showEventModal("Manajemen Kartu Bebas Penjara", `${cp.name}, Anda memiliki ${totalCards} Kartu Bebas Penjara.\nPilih tindakan yang ingin dilakukan:`, "🎫", [{text: "Jual 1 Kartu (Rp 100 Juta)", type: "btn-orange", value: "sell"}, {text: "Tutup", type: "btn-blue", value: "close"}], "#e17055");
     if(action === 'sell') {
       if(cp.getOutCards.chance > 0) { cp.getOutCards.chance--; gameState.getOutCardsPool.chance++; } else { cp.getOutCards.community--; gameState.getOutCardsPool.community++; }
       cp.money += 100; triggerExpressionAndSpeak('joy', `${cp.name} menjual 1 Kartu Bebas Penjara seharga Rp 100.000 ke bank.`);
@@ -2928,9 +3040,25 @@
         
         evMediaContainer.innerHTML = "";
         if(mediaUrl) { 
-          let img = document.createElement('img'); img.src = mediaUrl; img.className = 'ev-media-img'; 
-          img.onerror = function(){ this.style.display='none'; if(evIcon) evIcon.style.display='block'; }; 
+          let img = document.createElement('img'); 
+          img.src = mediaUrl; 
+          img.className = 'ev-media-img'; 
+          img.loading = 'eager';
+          img.style.display = 'block';
+          if(evIcon) evIcon.style.display = 'none';
+          img.onerror = function(){ 
+            // Jika foto gagal, coba lagi atau tampilkan icon, tapi jangan flicker
+            console.log('Image failed to load:', mediaUrl);
+            this.style.display='none'; 
+            if(evIcon) evIcon.style.display='block'; 
+          }; 
+          img.onload = function(){
+            this.style.display='block';
+            if(evIcon) evIcon.style.display='none';
+          };
           evMediaContainer.appendChild(img); 
+        } else {
+          if(evIcon) evIcon.style.display='block';
         }
 
         evActions.innerHTML = "";
@@ -2945,7 +3073,8 @@
 
         modal.style.display = 'flex'; 
         let delaySetting = document.getElementById('cfgButtonDelay')?.value || 'normal';
-        let speakPromise = speak(message, false, category);
+        // FIX: popup setelah tiba sampai giliran harus terdengar, pakai general biar tidak terfilter
+        let speakPromise = speak(message, false, 'general');
 
         if(delaySetting === 'normal') {
           speakPromise.then(() => {
@@ -2986,13 +3115,14 @@
     if(cp) {
       let rollBtn = document.getElementById('rollBtn');
       if(rollBtn) { rollBtn.disabled = true; rollBtn.classList.remove('turn-highlight'); }
-      await speak(`Giliran ${cp.name}. Silakan lempar dadu.`, true);
+      // Cukup sekali membacakan giliran lempar dadu langsung tunggu pemain tekan lempar dadu
+      await speak(`Giliran ${cp.name}. Silakan lempar dadu.`, true, 'general');
       if(rollBtn && !cp.inJail && !cp.isBot) { rollBtn.disabled = false; rollBtn.classList.add('turn-highlight'); }
       if(cp.isBot) executeBotTurn(cp);
     }
   }
 
-  function endTurn() {
+  async function endTurn() {
     try {
       let rollBtn = document.getElementById('rollBtn'); 
       if(rollBtn) { rollBtn.disabled = true; rollBtn.classList.remove('turn-highlight'); }
@@ -3015,7 +3145,8 @@
       let skipBtn = document.getElementById('skipBtn'); 
       if(skipBtn) skipBtn.disabled = false;
       
-      announceTurn();
+      // Pastikan pembacaan popup setelah tiba sampai giliran terdengar
+      await announceTurn();
       checkBotTurn();
     } catch(e) { 
       let rollBtn = document.getElementById('rollBtn'); 
@@ -3058,8 +3189,7 @@
 
         await showCinematic('jail', p);
         playVocalExpression('cry');
-        await speak(`${p.name} Tidak beruntung, Anda Masuk Penjara`, true, 'jail');
-        await showEventModalNoSpeak("Masuk Penjara!", `Dadu kembar 3 kali berturut-turut!\n${p.name} langsung dijebloskan ke penjara.`, "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436");
+        await showEventModal("Masuk Penjara!", `Dadu kembar 3 kali berturut-turut! ${p.name} langsung dijebloskan ke penjara.`, "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436");
         
         p.pos = 10; p.inJail = true; p.jailSkips = 0; doubleCount = 0;
         if(tokenContainers[10] && playerElements[p.id]) tokenContainers[10].appendChild(playerElements[p.id]);
@@ -3074,7 +3204,7 @@
 
       if (p.inJail) {
         let hasFreeCard = (p.getOutCards.chance > 0 || p.getOutCards.community > 0);
-        let jailButtons = [{text: "Bayar Denda (Rp 50rb)", type: "btn-blue", value: "pay"}, {text: `Tetap di Penjara (${p.jailSkips || 0}/3)`, type: "btn-orange", value: "stay"}];
+        let jailButtons = [{text: "Bayar Denda (Rp 50 Juta)", type: "btn-blue", value: "pay"}, {text: `Tetap di Penjara (${p.jailSkips || 0}/3)`, type: "btn-orange", value: "stay"}];
         if(hasFreeCard) jailButtons.unshift({text: "Gunakan Kartu Bebas", type: "btn-green", value: "card"});
 
         let jailChoice = await showEventModal("Berada di Penjara", `${p.name} sedang berada di penjara. (Maksimal menolak 3 kali)\nPilih tindakan Anda:`, "🗝️", jailButtons, "#d63031", null, 'jail');
@@ -3085,7 +3215,7 @@
           await showEventModal("Bebas dari Penjara", "Anda menggunakan Kartu Bebas Penjara secara gratis!", "🎉", [{text: "Lanjutkan", type: "btn-green"}], "#0984e3", null, 'jail');
         } else if(jailChoice === 'pay') {
           p.money -= 50; p.inJail = false; p.jailSkips = 0;
-          await showCinematic('free', p, "Bayar Denda Rp 50rb"); triggerExpressionAndSpeak('sad', 'Anda membayar denda dan bebas dari penjara.', 'payment'); checkDebtStatus(p);
+          await showCinematic('free', p, "Bayar Denda Rp 50 Juta"); triggerExpressionAndSpeak('sad', 'Anda membayar denda dan bebas dari penjara.', 'payment'); checkDebtStatus(p);
         } else { 
           p.jailSkips = (p.jailSkips || 0) + 1;
           if (p.jailSkips >= 3) {
@@ -3163,9 +3293,25 @@
         if(evIcon){ evIcon.innerText = icon || "🎲"; evIcon.style.display = mediaUrl ? 'none' : 'block'; }
         evMediaContainer.innerHTML = "";
         if(mediaUrl) { 
-          let img = document.createElement('img'); img.src = mediaUrl; img.className = 'ev-media-img'; 
-          img.onerror = function(){ this.style.display='none'; if(evIcon) evIcon.style.display='block'; }; 
+          let img = document.createElement('img'); 
+          img.src = mediaUrl; 
+          img.className = 'ev-media-img'; 
+          img.loading = 'eager';
+          img.style.display = 'block';
+          if(evIcon) evIcon.style.display = 'none';
+          img.onerror = function(){ 
+            // Jika foto gagal, coba lagi atau tampilkan icon, tapi jangan flicker
+            console.log('Image failed to load:', mediaUrl);
+            this.style.display='none'; 
+            if(evIcon) evIcon.style.display='block'; 
+          }; 
+          img.onload = function(){
+            this.style.display='block';
+            if(evIcon) evIcon.style.display='none';
+          };
           evMediaContainer.appendChild(img); 
+        } else {
+          if(evIcon) evIcon.style.display='block';
         }
         evActions.innerHTML = "";
         let actionButtons = [];
@@ -3411,12 +3557,12 @@
       } else if (bot.money >= 50) {
         if(level === 'easy'){
           bot.jailSkips = (bot.jailSkips || 0) + 1;
-          if(bot.jailSkips >= 3) { bot.inJail = false; bot.jailSkips = 0; bot.money -= 50; await showCinematic('free', bot, "Bot Bayar Denda Rp 50rb"); }
+          if(bot.jailSkips >= 3) { bot.inJail = false; bot.jailSkips = 0; bot.money -= 50; await showCinematic('free', bot, "Bot Bayar Denda Rp 50 Juta"); }
           else { endTurn(); return; }
         } else if(level === 'normal'){
           if(bot.jailSkips >= 1 && bot.money >= 150){
             bot.money -= 50; bot.inJail = false; bot.jailSkips = 0;
-            await showCinematic('free', bot, "Bot Bayar Denda Rp 50rb");
+            await showCinematic('free', bot, "Bot Bayar Denda Rp 50 Juta");
           } else {
             bot.jailSkips = (bot.jailSkips || 0) + 1;
             if(bot.jailSkips >= 3) { bot.inJail = false; bot.jailSkips = 0; bot.money -= 50; }
@@ -3519,8 +3665,7 @@
       if (card.goToJail) {
         await showCinematic('jail', bot);
         playVocalExpression('cry');
-        await speak(`${bot.name} Tidak beruntung, Masuk Penjara`, true, 'jail');
-        await showEventModalNoSpeak("Bot Masuk Penjara!", `${bot.name} tertangkap! Masuk penjara!`, "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436", null);
+        await showEventModal("Bot Masuk Penjara!", `${bot.name} tertangkap! Masuk penjara!`, "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436");
         bot.pos = 10; bot.inJail = true; bot.jailSkips = 0;
         if(tokenContainers[10] && playerElements[bot.id]) tokenContainers[10].appendChild(playerElements[bot.id]);
         await speak(`Silahkan giliran selanjutnya, lempar dadu`, false, 'arrival');
@@ -3564,18 +3709,18 @@
       }
     }
 
-    // Pajak - wajib bayar sama seperti manusia
+    // Pajak - wajib bayar sama seperti manusia - TTS baru
     if (cell.special === 'tax') {
       playVocalExpression('sad');
+      await speak(`${bot.name} silahkan bayar ${formatRupiahSpoken(cell.price)}`, true, 'payment');
       await showEventModal("Bayar Pajak - Bot", `${bot.name} bayar pajak ${formatRupiah(cell.price)}`, "💸", [{text: "Bayar", type: "btn-red"}], "#d63031", null, 'payment');
       bot.money -= cell.price;
       return;
     } 
-    // Masuk Penjara (petak 30) - jangan katakan Tiba, tapi Tidak beruntung
+    // Masuk Penjara (petak 30) - cukup popup saja
     else if (bot.pos === 30) {
       playVocalExpression('cry');
-      await speak(`${bot.name} Tidak beruntung, Masuk Penjara`, true, 'jail');
-      await showEventModalNoSpeak("Masuk Penjara! - Bot", `${bot.name} tertangkap! Langsung ke penjara!`, "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436", null);
+      await showEventModal("Masuk Penjara! - Bot", `${bot.name} tertangkap! Langsung ke penjara!`, "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436");
       bot.pos = 10; bot.inJail = true; bot.jailSkips = 0; 
       if(tokenContainers[10] && playerElements[bot.id]) tokenContainers[10].appendChild(playerElements[bot.id]);
       await speak(`Silahkan giliran selanjutnya, lempar dadu`, false, 'arrival');
@@ -3585,12 +3730,13 @@
     else if (cell.price > 0 && !cell.special) {
       if (cell.owner === null) {
         if(shouldBotBuy(bot, cell)){
-          playVocalExpression('joy');
-          // Pembelian sukses dibacakan SEBELUM detil aset - sesuai permintaan
-          await speak(`Pembelian aset sukses, ${cell.name} sekarang milik ${bot.name}`, true, 'payment');
+          // Langsung potong dan set owner - sukses langsung dibacakan setelah keputusan beli bot
           bot.money -= cell.price; cell.owner = bot.id;
+          updateUI(); 
+          playVocalExpression('joy');
+          await speak(`Pembelian aset sukses, ${cell.name} sekarang milik ${bot.name}`, true, 'payment');
           let baseRentBot = Math.round(cell.price*0.2);
-          await speak(`Detil aset, ${cell.name}, harga beli ${formatRupiah(cell.price)}, sewa dasar ${formatRupiah(baseRentBot)}`, false, 'payment');
+          await speak(`Detil aset, ${cell.name}, harga beli ${formatRupiahSpoken(cell.price)}, sewa dasar ${formatRupiahSpoken(baseRentBot)}`, false, 'payment');
           await showEventModal("Bot Beli Properti!", `${bot.avatar} ${bot.name} [${bot.botLevel}] membeli ${cell.name} seharga ${formatRupiah(cell.price)}!`, "🏠", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img, 'payment');
         } else {
           await showEventModal("Bot Lewati Beli", `${bot.name} [${bot.botLevel}] melewati ${cell.name} - strategi ${bot.botLevel}`, "🤔", [{text: "Lanjut", type: "btn-blue"}], "#636e72", cell.img, 'arrival');
@@ -3603,14 +3749,18 @@
           let canBuildHouse = cell.houses < 4 && cell.hotels === 0;
           let canBuildHotel = cell.houses === 4 && cell.hotels < 4;
           if(canBuildHouse){
+            let oldHouseBot = cell.houses; let newHouseBot = oldHouseBot + 1;
             await showCinematic('buildHouse', bot, cell.name);
-            bot.money -= houseCost; cell.houses++;
+            bot.money -= houseCost; cell.houses = newHouseBot;
             playVocalExpression('joy');
+            await speak(`Sukses pada peningkatan aset penambahan rumah ke ${newHouseBot} dari ${oldHouseBot} menjadi ${newHouseBot} milik ${bot.name} dipetak ${cell.name}`, true, 'build');
             await showEventModal("Bot Bangun Rumah!", `${bot.name} [${bot.botLevel}] bangun rumah ke-${cell.houses} di ${cell.name}`, "🏗️", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img, 'build');
           } else if(canBuildHotel){
+            let oldHotelBot = cell.hotels; let newHotelBot = oldHotelBot + 1;
             await showCinematic('buildHotel', bot, cell.name);
-            bot.money -= hotelCost; cell.hotels++;
+            bot.money -= hotelCost; cell.hotels = newHotelBot;
             playVocalExpression('joy');
+            await speak(`Sukses pada peningkatan aset penambahan hotel ke ${newHotelBot} dari ${oldHotelBot} menjadi ${newHotelBot} milik ${bot.name} dipetak ${cell.name}`, true, 'build');
             await showEventModal("Bot Bangun Hotel!", `${bot.name} [${bot.botLevel}] bangun hotel ke-${cell.hotels} di ${cell.name}`, "🏨", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img, 'build');
           }
         }
@@ -3668,8 +3818,7 @@
           if(skipBtnEl) skipBtnEl.disabled = true;
           await showCinematic('jail', p); 
           playVocalExpression('cry');
-          await speak(`${p.name} Tidak beruntung, Anda Masuk Penjara`, true, 'jail');
-          await showEventModalNoSpeak("Masuk Penjara!", "Pengawal Pemerintah menyeret Anda ke penjara!", "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436", null);
+          await showEventModal("Masuk Penjara!", "Pengawal Pemerintah menyeret Anda ke penjara!", "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436");
           p.pos = 10; p.inJail = true; p.jailSkips = 0;
           if(tokenContainers[10] && playerElements[p.id]) tokenContainers[10].appendChild(playerElements[p.id]);
           await speak(`Silahkan giliran selanjutnya, lempar dadu`, false, 'arrival');
@@ -3682,21 +3831,96 @@
         return;
       }
 
-      // Parkir Bebas - petak sudut, jangan sebut pemilik
+      // Parkir Bebas - petak sudut, jangan sebut pemilik - FIX FULLSCREEN: pakai custom modal, bukan prompt/alert
       if (p.pos === 20) {
         await speak(`Tiba di ${cell.name}`, false, 'arrival');
         playVocalExpression('joy');
-        let validChoice = false; let targetPos = 20; let attempts = 0;
         
-        while(!validChoice && attempts < 20) {
-          attempts++;
-          let inputDest = prompt(`${p.name} mendarat di Parkir Bebas!\nMasukkan nomor kotak tujuan (0 s.d. 39):\n(Dilarang memilih kotak Penjara [10], Masuk Penjara [30], Kesempatan, atau Dana Umum)\n\nKosongkan / Cancel untuk tetap di Parkir Bebas`);
-          if(inputDest === null || inputDest.trim() === "") { targetPos = 20; validChoice = true; break; }
-          targetPos = parseInt(inputDest);
-          if(isNaN(targetPos) || targetPos < 0 || targetPos > 39) { alert("Nomor kotak tidak valid! Masukkan angka antara 0 sampai 39."); continue; }
-          let targetCell = gameState.boardData[targetPos];
-          if (targetPos === 10 || targetPos === 30 || targetCell.special === 'chance' || targetCell.special === 'dana') { alert("Anda tidak boleh parkir di kotak Penjara atau kotak Kartu!"); continue; }
-          validChoice = true;
+        // Custom modal input agar tidak keluar fullscreen (prompt/alert bikin keluar fullscreen)
+        async function getParkingDestinationCustom(){
+          return new Promise((resolve)=>{
+            let modal = document.getElementById('eventModal');
+            let evTitle = document.getElementById('evTitle');
+            let evMessage = document.getElementById('evMessage');
+            let evMediaContainer = document.getElementById('evMediaContainer');
+            let evIcon = document.getElementById('evIcon');
+            let evActions = document.getElementById('evActions');
+            
+            evTitle.innerText = "Parkir Bebas - Pilih Tujuan";
+            evTitle.style.background = "#e67e22";
+            evMessage.innerHTML = `
+              ${p.name} mendarat di Parkir Bebas!<br>
+              Masukkan nomor kotak tujuan (0-39):<br>
+              <small style="color:#d63031;">Dilarang: Penjara [10], Masuk Penjara [30], Kesempatan, Dana Umum</small><br><br>
+              <input type="number" id="parkingInputCustom" min="0" max="39" placeholder="0-39 atau kosong untuk tetap" 
+                style="width:100%; padding:12px; font-size:16px; border:3px solid #0984e3; border-radius:8px; text-align:center; background:white; color:#2d3436;">
+              <div id="parkingError" style="color:#d63031; font-size:12px; margin-top:8px; display:none;"></div>
+            `;
+            evMediaContainer.innerHTML = "";
+            if(evIcon){ evIcon.innerText = "🅿️"; evIcon.style.display = 'block'; }
+            evActions.innerHTML = "";
+            
+            let btnGo = document.createElement('button');
+            btnGo.innerText = "Pindah";
+            btnGo.className = "ev-btn btn-green";
+            btnGo.onclick = ()=>{
+              let input = document.getElementById('parkingInputCustom');
+              let errorDiv = document.getElementById('parkingError');
+              let val = input.value.trim();
+              if(val === ""){
+                modal.style.display = 'none';
+                resolve(20);
+                return;
+              }
+              let num = parseInt(val);
+              if(isNaN(num) || num < 0 || num > 39){
+                errorDiv.innerText = "Nomor tidak valid! Masukkan 0-39";
+                errorDiv.style.display = 'block';
+                return;
+              }
+              let targetCell = gameState.boardData[num];
+              if(num === 10 || num === 30 || (targetCell && (targetCell.special === 'chance' || targetCell.special === 'dana'))){
+                errorDiv.innerText = "Tidak boleh parkir di Penjara atau kotak Kartu!";
+                errorDiv.style.display = 'block';
+                return;
+              }
+              modal.style.display = 'none';
+              resolve(num);
+            };
+            
+            let btnStay = document.createElement('button');
+            btnStay.innerText = "Tetap di Parkir";
+            btnStay.className = "ev-btn btn-blue";
+            btnStay.onclick = ()=>{ modal.style.display='none'; resolve(20); };
+            
+            let btnCancel = document.createElement('button');
+            btnCancel.innerText = "Batal (Keluar Fullscreen)";
+            btnCancel.className = "ev-btn btn-red";
+            btnCancel.onclick = ()=>{
+              modal.style.display='none';
+              // Hanya saat batal baru boleh keluar fullscreen - sesuai permintaan
+              try {
+                if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
+                else if(document.webkitFullscreenElement && document.webkitExitFullscreen) document.webkitExitFullscreen();
+              } catch(e){}
+              resolve(null);
+            };
+            
+            evActions.appendChild(btnGo);
+            evActions.appendChild(btnStay);
+            evActions.appendChild(btnCancel);
+            modal.style.display = 'flex';
+            setTimeout(()=>{ 
+              let inp = document.getElementById('parkingInputCustom');
+              if(inp) inp.focus();
+            }, 200);
+          });
+        }
+        
+        let targetPos = await getParkingDestinationCustom();
+        if(targetPos === null){
+          // Batal - keluar fullscreen sudah ditangani di tombol batal, tetap di parkir
+          targetPos = 20;
         }
         
         p.pos = targetPos;
@@ -3708,19 +3932,27 @@
         return; 
       }
 
-      // TTS: untuk petak sudut jangan sebut pemilik, hanya untuk petak daerah yang bisa dibeli
-      let isBuyable = (cell.price > 0 && !cell.special && cell.type !== 'corner');
-      if(isBuyable){
-        if (cell.owner === null) {
-          await speak(`Tiba di ${cell.name}, tanah kosong, belum ada Pemilik`, false, 'arrival');
-        } else {
-          let owner = gameState.players.find(pl => pl.id === cell.owner);
-          let ownerName = owner ? owner.name : "Pemain lain";
-          await speak(`Tiba di ${cell.name}, milik ${ownerName}`, false, 'arrival');
-        }
+      // TTS: untuk petak sudut jangan sebut pemilik, hanya untuk petak daerah yang bisa dibeli - khusus GO dan Pajak ada ucapan khusus
+      if(p.pos === 0){
+        // Tiba di GO
+        await speak(`Selamat memulai lagi, Anda mendapat gaji ${formatRupiahSpoken(200)}`, true, 'start');
       } else {
-        // Petak sudut (GO, PENJARA, PARKIR BEBAS, MASUK PENJARA) dan petak khusus tidak sebut pemilik
-        await speak(`Tiba di ${cell.name}`, false, 'arrival');
+        let isBuyable = (cell.price > 0 && !cell.special && cell.type !== 'corner');
+        if(isBuyable){
+          if (cell.owner === null) {
+            await speak(`Tiba di ${cell.name}, tanah kosong, belum ada Pemilik`, false, 'arrival');
+          } else {
+            let owner = gameState.players.find(pl => pl.id === cell.owner);
+            let ownerName = owner ? owner.name : "Pemain lain";
+            await speak(`Tiba di ${cell.name}, milik ${ownerName}`, false, 'arrival');
+          }
+        } else {
+          // Petak sudut PENJARA dan MASUK PENJARA tidak perlu disebut tiba, cukup popup saja
+          // PARKIR BEBAS masih disebut tiba
+          if(p.pos !== 0 && p.pos !== 10 && p.pos !== 30 && cell.special !== 'tax'){
+            await speak(`Tiba di ${cell.name}`, false, 'arrival');
+          }
+        }
       }
       
       if (cell.price > 0 && !cell.special && cell.owner === null) {
@@ -3736,6 +3968,8 @@
 
       if (cell.special === 'tax') {
         playVocalExpression('sad');
+        // TTS baru: Pemain? silahkan bayar pajak ?anda
+        await speak(`${p.name} silahkan bayar ${formatRupiahSpoken(cell.price)}`, true, 'payment');
         await showEventModal("Bayar Pajak", `Tagihan pajak Anda sebesar ${formatRupiah(cell.price)}`, "💸", [{text: "Bayar", type: "btn-red"}], "#d63031", null, 'payment');
         p.money -= cell.price;
         return;
@@ -3757,11 +3991,11 @@
           let purchaseModalMessage = `Aset Daerah: ${cell.name}\nHarga Beli: ${formatRupiah(cell.price)}\nSewa Dasar: ${formatRupiah(baseRent)}`;
           let res = await showEventModal("Beli Properti?", purchaseModalMessage, "📄", [{text: "Beli", type: "btn-green", value: "b"}, {text: "Lewati", type: "btn-red", value: "s"}], "#0984e3", cell.img, 'arrival');
           if(res === 'b' && p.money >= cell.price) { 
-            playVocalExpression('joy');
-            // Pembelian sukses dibacakan SEBELUM detil aset dashboard
-            await speak(`Pembelian aset sukses, ${cell.name} sekarang milik ${p.name}`, true, 'payment');
             p.money -= cell.price; cell.owner = p.id; 
-            await speak(`Detil aset, ${cell.name}, harga beli ${formatRupiah(cell.price)}, sewa dasar ${formatRupiah(baseRent)}`, false, 'payment');
+            updateUI(); saveLocalState();
+            playVocalExpression('joy');
+            await speak(`Pembelian aset sukses, ${cell.name} sekarang milik ${p.name}`, true, 'general');
+            await speak(`Detil aset, ${cell.name}, harga beli ${formatRupiahSpoken(cell.price)}, sewa dasar ${formatRupiahSpoken(baseRent)}`, false, 'general');
           }
         } 
         else if (cell.owner === p.id && cell.color && !cell.mortgaged) {
@@ -3773,12 +4007,16 @@
           else { upgradeMsg += `(Maksimal atau dana tidak cukup untuk peningkatan 1 tingkat sekaligus)`; }
           let upRes = await showEventModal("Peningkatan Aset", upgradeMsg, "🏗️", buttons, "#0984e3", cell.img, 'build');
           if(upRes === 'house' && p.money >= houseCost) { 
-            await showCinematic('buildHouse', p, cell.name); p.money -= houseCost; cell.houses++; 
+            let oldHouse = cell.houses; let newHouse = oldHouse + 1;
+            await showCinematic('buildHouse', p, cell.name); p.money -= houseCost; cell.houses = newHouse; 
             playVocalExpression('joy');
+            await speak(`Sukses pada peningkatan aset penambahan rumah ke ${newHouse} dari ${oldHouse} menjadi ${newHouse} milik ${p.name} dipetak ${cell.name}`, true, 'build');
           } 
           else if(upRes === 'hotel' && p.money >= hotelCost) { 
-            await showCinematic('buildHotel', p, cell.name); p.money -= hotelCost; cell.hotels++; 
+            let oldHotel = cell.hotels; let newHotel = oldHotel + 1;
+            await showCinematic('buildHotel', p, cell.name); p.money -= hotelCost; cell.hotels = newHotel; 
             playVocalExpression('joy');
+            await speak(`Sukses pada peningkatan aset penambahan hotel ke ${newHotel} dari ${oldHotel} menjadi ${newHotel} milik ${p.name} dipetak ${cell.name}`, true, 'build');
           }
         }
         else if (cell.owner !== p.id && !cell.mortgaged) {
@@ -3789,7 +4027,7 @@
           else if(isMono) rent = baseRent * 5;
           rent = Math.round(rent);
           let rentDesc = `Anda berhenti di properti milik ${owner.avatar} ${owner.name}.\nWilayah: ${cell.name}\nTarif Sewa Dasar: ${formatRupiah(baseRent)}`;
-          if(isMono && cell.houses === 0 && cell.hotels === 0) rentDesc += `\n[👑 Bonus Monopoli Kompleks/Utilitas: Sewa jadi 5x Lipat!]`;
+          if(isMono && cell.houses === 0 && cell.hotels === 0) rentDesc += `\n[👑 Bonus Monopoli Kompleks/Utilitas: Sewa jadi 5 Kali Lipat!]`;
           rentDesc += `\nTotal Tagihan Sewa: ${formatRupiah(rent)}`;
           playVocalExpression('sad');
           await showEventModal("Bayar Sewa Properti!", rentDesc, "🤝", [{text: "Bayar ke " + owner.name, type: "btn-blue", value: "p"}], "#e84393", cell.img, 'payment');
@@ -3799,7 +4037,7 @@
     } catch(e){ console.error(e); }
   }
 
-  function handleLogin() {
+  async function handleLogin() {
     const user = document.getElementById('loginUsername').value;
     const pass = document.getElementById('loginPassword').value;
     if (user.trim() !== '' && pass.trim() !== '') {
@@ -3807,11 +4045,12 @@
       overlay.style.opacity = '0';
       setTimeout(() => { overlay.style.display = 'none'; }, 500);
       localStorage.setItem('monopoliLoggedIn', 'true');
-    } else { alert('Username dan Password tidak boleh kosong!'); }
+    } else { await showEventModalNoSpeak("Login Gagal", "Username dan Password tidak boleh kosong!", "🔒", [{text:"OK", type:"btn-red"}]); }
   }
 
-  function handleLogout() {
-    if(confirm('Apakah Anda yakin ingin logout?')) {
+  async function handleLogout() {
+    let conf = await showEventModal("Logout?", "Apakah Anda yakin ingin logout?", "🚪", [{text:"Ya, Logout", type:"btn-red", value:"yes"}, {text:"Batal", type:"btn-blue", value:"no"}]);
+    if(conf === "yes") {
       localStorage.removeItem('monopoliLoggedIn');
       location.reload();
     }
