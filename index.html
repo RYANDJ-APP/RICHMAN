@@ -125,15 +125,15 @@
     width: 100%;
     height: 100%;
   }
-  /* Popup perjalanan simetris di tengah papan */
+  /* Popup perjalanan tetap full screen center - jangan offset biar tidak kedip */
   #diceAnimOverlay, #cinematicOverlay {
-    left: 150px; /* offset dashboard 300px / 2 */
-    width: calc(100vw - 150px);
+    left: 0;
+    width: 100vw;
     justify-content: center;
   }
   #royalModal, #eventModal, #tariffModal, #assetsModal, #sessionModal {
-    left: 150px;
-    width: calc(100vw - 150px);
+    left: 0;
+    width: 100vw;
   }
   /* Dashboard holder collapse - bukan show/hide konten saja */
   .asset-dashboard-side.collapsed-holder {
@@ -1354,7 +1354,7 @@
           <div class="scoreboard-center" id="scoreboardCenter"></div>
           <div class="roll-below-player" id="rollBelowPlayer">
             <div id="diceDisplay" style="font-size: 11px; font-weight: bold;">🎲 - / 🎲 -</div>
-            <button class="btn-roll" id="rollBtn" onmousedown="startHoldDice()" onmouseup="releaseHoldDice()" ontouchstart="startHoldDice()" ontouchend="releaseHoldDice()">Kocok Dadu</button>
+            <button class="btn-roll" id="rollBtn" onmousedown="startHoldDice()" onmouseup="releaseHoldDice()" ontouchstart="startHoldDice()" ontouchend="releaseHoldDice()">Lempar Dadu</button>
             <button class="btn-skip" id="skipBtn" onclick="skipTurn()" title="Lewati Giliran di Penjara">Lewati</button>
           </div>
         </div>
@@ -1933,7 +1933,7 @@
         await showWalkingScene(player, fromPos, toPos, steps, i+1);
         triggerExpressionAndSpeak('joy', `Selamat ${player.name}`, 'start');
         player.money += 200; updateUI();
-        await showEventModal("Melewati GO!", `anda mendapat gaji ${formatRupiah(200)}`, "💵", [{text: "Ambil Gaji", type: "btn-green"}], "#0984e3", null, 'start');
+        await showEventModal("Melewati GO!", `Selamat anda Melewati Start dan mendapat gaji ${formatRupiah(200)}`, "💵", [{text: "Ambil Gaji", type: "btn-green"}], "#0984e3", null, 'start');
       }
       
       await new Promise(r => setTimeout(r, stepDelayMs));
@@ -2516,7 +2516,7 @@
       let cp = gameState.players[gameState.turnIndex];
       if(cp) {
         let rollBtn = document.getElementById('rollBtn');
-        if(rollBtn){ rollBtn.innerText = `🎲 ${cp.avatar} ${cp.name} - Kocok!`; rollBtn.classList.add('turn-highlight'); }
+        if(rollBtn){ rollBtn.innerText = `🎲 ${cp.avatar} ${cp.name} - Lempar!`; rollBtn.classList.add('turn-highlight'); }
         let skipBtn = document.getElementById('skipBtn');
         if(skipBtn){ if(cp.inJail) skipBtn.style.display = 'inline-block'; else skipBtn.style.display = 'none'; }
         
@@ -2526,7 +2526,7 @@
         let diceDisp = document.getElementById('diceDisplay');
         if(diceDisp){
           diceDisp.classList.add('turn-display');
-          if(diceDisp.innerText.includes('- / -') || diceDisp.innerText.includes('Mengocok')) diceDisp.innerText = `👉 ${cp.avatar} ${cp.name} siap kocok!`;
+          if(diceDisp.innerText.includes('- / -') || diceDisp.innerText.includes('Mengocok')) diceDisp.innerText = `👉 ${cp.avatar} ${cp.name} siap lempar dadu!`;
         }
       }
       updateSideAssetDashboard();
@@ -2937,7 +2937,7 @@
     if(cp) {
       let rollBtn = document.getElementById('rollBtn');
       if(rollBtn) { rollBtn.disabled = true; rollBtn.classList.remove('turn-highlight'); }
-      await speak(`Giliran ${cp.name}. Silakan kocok dadu.`, true);
+      await speak(`Giliran ${cp.name}. Silakan lempar dadu.`, true);
       if(rollBtn && !cp.inJail && !cp.isBot) { rollBtn.disabled = false; rollBtn.classList.add('turn-highlight'); }
       if(cp.isBot) executeBotTurn(cp);
     }
@@ -3008,12 +3008,15 @@
         if(skipBtnEl) skipBtnEl.disabled = true;
 
         await showCinematic('jail', p);
-        triggerExpressionAndSpeak('cry', `Terlalu sering dadu kembar! ${p.name} harus masuk penjara.`);
-        await showEventModal("Masuk Penjara!", `Dadu kembar 3 kali berturut-turut!\n${p.name} langsung dijebloskan ke penjara.`, "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436");
+        playVocalExpression('cry');
+        await speak(`${p.name} Tidak beruntung, Anda Masuk Penjara`, true, 'jail');
+        await showEventModalNoSpeak("Masuk Penjara!", `Dadu kembar 3 kali berturut-turut!\n${p.name} langsung dijebloskan ke penjara.`, "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436");
         
         p.pos = 10; p.inJail = true; p.jailSkips = 0; doubleCount = 0;
         if(tokenContainers[10] && playerElements[p.id]) tokenContainers[10].appendChild(playerElements[p.id]);
-        updateUI(); endTurn(); return;
+        updateUI(); 
+        await speak(`Silahkan giliran selanjutnya, lempar dadu`, false, 'arrival');
+        endTurn(); return;
       }
 
       let diceDisp = document.getElementById('diceDisplay'); if(diceDisp) diceDisp.innerText = `🎲 ${d1} / 🎲 ${d2} (Maju ${steps}) ${isDouble ? '⚡ KEMBAR!' : ''}`;
@@ -3058,8 +3061,10 @@
         if(rollBtnEl) rollBtnEl.disabled = true;
         if(skipBtnEl) skipBtnEl.disabled = true;
 
-        await showEventModal("Dadu Kembar!", `Dadu Kembar (${d1}-${d2})!\n${p.name} mendapat kesempatan jalan sekali lagi!`, "⚡", [{text: "Lanjutkan", type: "btn-green"}], "#f1c40f");
-        await speak(`Luar biasa! Dadu kembar ${d1} dan ${d2}. ${p.name} mendapat kesempatan jalan lagi!`, true);
+        playVocalExpression('joy');
+        await speak(`Luar biasa dadu kembar, ${p.name} dapat tambahan giliran lempar dadu`, true, 'arrival');
+        await showEventModalNoSpeak("Dadu Kembar!", `Dadu Kembar (${d1}-${d2})!\n${p.name} mendapat tambahan giliran lempar dadu!`, "⚡", [{text: "Lanjutkan", type: "btn-green"}], "#f1c40f");
+        await speak(`Silahkan giliran, ${p.name}, lempar dadu`, false, 'arrival');
         
         updateUI(); 
         if(rollBtnEl) { rollBtnEl.disabled = false; rollBtnEl.classList.add('turn-highlight'); }
@@ -3088,6 +3093,47 @@
         endTurn(); 
       } 
     } catch(e){ endTurn(); } 
+  }
+
+  function showEventModalNoSpeak(title, message, icon, buttons, headerColor = "#0984e3", mediaUrl = null) {
+    return new Promise(resolve => {
+      try {
+        const modal = document.getElementById('eventModal'); 
+        const evTitle = document.getElementById('evTitle'); 
+        const evMessage = document.getElementById('evMessage'); 
+        const evMediaContainer = document.getElementById('evMediaContainer'); 
+        const evIcon = document.getElementById('evIcon'); 
+        const evActions = document.getElementById('evActions');
+        if(!modal || !evTitle || !evMessage || !evActions){ resolve(null); return; }
+        let resolved = false;
+        const safeResolve = (val) => { 
+          if(!resolved){ resolved = true; try { modal.style.display = 'none'; } catch(e){} resolve(val); } 
+        };
+        const timeoutId = setTimeout(()=>{ safeResolve(buttons[0]?.value || null); }, 60000);
+        evTitle.innerText = title; evTitle.style.background = headerColor; evMessage.innerText = message; 
+        if(evIcon){ evIcon.innerText = icon || "🎲"; evIcon.style.display = mediaUrl ? 'none' : 'block'; }
+        evMediaContainer.innerHTML = "";
+        if(mediaUrl) { 
+          let img = document.createElement('img'); img.src = mediaUrl; img.className = 'ev-media-img'; 
+          img.onerror = function(){ this.style.display='none'; if(evIcon) evIcon.style.display='block'; }; 
+          evMediaContainer.appendChild(img); 
+        }
+        evActions.innerHTML = "";
+        let actionButtons = [];
+        buttons.forEach(btn => { 
+          let b = document.createElement('button'); 
+          b.innerText = btn.text; b.className = `ev-btn ${btn.type}`; b.disabled = false;
+          b.style.opacity = "1"; b.style.cursor = "pointer";
+          b.onclick = () => { if(b.disabled) return; clearTimeout(timeoutId); safeResolve(btn.value); }; 
+          evActions.appendChild(b); actionButtons.push(b);
+        });
+        modal.style.display = 'flex'; 
+        // Tidak ada speak - popup tidak perlu dibaca, langsung bisa interrupt ke silahkan giliran
+        modal.onclick = (e) => { 
+          if(e.target === modal){ clearTimeout(timeoutId); safeResolve(buttons[0]?.value || null); } 
+        };
+      } catch(err){ resolve(null); }
+    });
   }
 
   function showRoyalScrollModal(title, message, isGood) {
@@ -3356,23 +3402,28 @@
       await handleBotLanding(bot);
     }
 
-    // Aturan dadu dobel berlaku sama untuk bot dan manusia
+    // Aturan dadu dobel berlaku sama untuk bot dan manusia - dengan ucapan khusus
     if (isDouble) {
       if(bot.inJail){
         endTurn();
       } else {
         if(doubleCount >= 3){
-          // 3x double masuk penjara - sama untuk bot
+          // 3x double masuk penjara - sama untuk bot, jangan katakan Tiba
           await showCinematic('jail', bot);
           playVocalExpression('cry');
-          await showEventModal("Masuk Penjara! 3x Dadu Dobel", `${bot.name} 3x dadu dobel berturut-turut! Masuk penjara!`, "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436", null, 'jail');
+          await speak(`${bot.name} Tidak beruntung, Masuk Penjara`, true, 'jail');
+          await showEventModalNoSpeak("Masuk Penjara! 3x Dadu Dobel", `${bot.name} 3x dadu dobel berturut-turut! Masuk penjara!`, "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436", null);
           bot.pos = 10; bot.inJail = true; bot.jailSkips = 0;
           if(tokenContainers[10] && playerElements[bot.id]) tokenContainers[10].appendChild(playerElements[bot.id]);
           doubleCount = 0;
+          await speak(`Silahkan giliran selanjutnya, lempar dadu`, false, 'arrival');
           endTurn();
         } else {
-          // Dapat giliran lagi - semua level sama
-          await speak(`${bot.name} dapat dadu dobel! Giliran lagi.`, false, 'arrival');
+          // Dapat giliran lagi - semua level sama, dengan ucapan luar biasa dadu kembar
+          playVocalExpression('joy');
+          await speak(`Luar biasa dadu kembar, ${bot.name} dapat tambahan giliran lempar dadu`, true, 'arrival');
+          await showEventModalNoSpeak("Dadu Kembar! - Bot", `Dadu Kembar! ${bot.name} dapat tambahan giliran lempar dadu!`, "⚡", [{text: "Lanjutkan", type: "btn-green"}], "#f1c40f");
+          await speak(`Silahkan giliran, ${bot.name}, lempar dadu`, false, 'arrival');
           // Delay sedikit sebelum lempar lagi
           setTimeout(()=>{ checkBotTurn(); }, 800);
           return;
@@ -3388,15 +3439,16 @@
     if (!cell) return;
 
     // === PERLAKUKAN BOT SAMA SEPERTI MANUSIA - SEMUA ATURAN BERLAKU SAMA ===
-    // TTS bot: sudut jangan sebut pemilik, hanya petak daerah yang bisa dibeli sebut pemiliknya
+    // TTS bot: sudut jangan sebut pemilik, hanya petak daerah yang bisa dibeli - ganti "milik Belum ada" jadi "tanah kosong, belum ada Pemilik"
     let isBuyableBot = (cell.price > 0 && !cell.special && cell.type !== 'corner');
     if(isBuyableBot){
-      let ownerNameBot = "Belum ada";
-      if(cell.owner !== null){
+      if(cell.owner === null){
+        await speak(`${bot.name} tiba di ${cell.name}, tanah kosong, belum ada Pemilik`, false, 'arrival');
+      } else {
         let owner = gameState.players.find(pl => pl.id === cell.owner);
-        ownerNameBot = owner ? owner.name : "Pemain lain";
+        let ownerNameBot = owner ? owner.name : "Pemain lain";
+        await speak(`${bot.name} tiba di ${cell.name}, milik ${ownerNameBot}`, false, 'arrival');
       }
-      await speak(`${bot.name} tiba di ${cell.name}, milik ${ownerNameBot}`, false, 'arrival');
     } else {
       if(cell.special !== 'chance' && cell.special !== 'dana' && bot.pos !== 20){
         await speak(`${bot.name} tiba di ${cell.name}`, false, 'arrival');
@@ -3416,15 +3468,18 @@
       
       try { playVocalExpression(card.type || 'joy'); } catch(e){}
       let isGoodEvent = (card.amount >= 0 && !card.goToJail);
-      await showRoyalScrollModal(title, fullMessage, isGoodEvent);
+      let modalPromiseBot = showRoyalScrollModal(title, fullMessage, isGoodEvent);
       await speak(`${title} untuk ${bot.name}, ${card.text}`, true, 'card');
+      await modalPromiseBot;
 
       if (card.goToJail) {
         await showCinematic('jail', bot);
         playVocalExpression('cry');
-        await showEventModal("Bot Masuk Penjara!", `${bot.name} tertangkap! Masuk penjara!`, "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436", null, 'jail');
+        await speak(`${bot.name} Tidak beruntung, Masuk Penjara`, true, 'jail');
+        await showEventModalNoSpeak("Bot Masuk Penjara!", `${bot.name} tertangkap! Masuk penjara!`, "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436", null);
         bot.pos = 10; bot.inJail = true; bot.jailSkips = 0;
         if(tokenContainers[10] && playerElements[bot.id]) tokenContainers[10].appendChild(playerElements[bot.id]);
+        await speak(`Silahkan giliran selanjutnya, lempar dadu`, false, 'arrival');
       } else if (card.getOutCard) {
         gameState.getOutCardsPool[card.deck]--;
         bot.getOutCards[card.deck] = (bot.getOutCards[card.deck] || 0) + 1;
@@ -3472,22 +3527,27 @@
       bot.money -= cell.price;
       return;
     } 
-    // Masuk Penjara (petak 30)
+    // Masuk Penjara (petak 30) - jangan katakan Tiba, tapi Tidak beruntung
     else if (bot.pos === 30) {
       playVocalExpression('cry');
-      await showEventModal("Masuk Penjara! - Bot", `${bot.name} tertangkap! Langsung ke penjara!`, "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436", null, 'jail');
+      await speak(`${bot.name} Tidak beruntung, Masuk Penjara`, true, 'jail');
+      await showEventModalNoSpeak("Masuk Penjara! - Bot", `${bot.name} tertangkap! Langsung ke penjara!`, "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436", null);
       bot.pos = 10; bot.inJail = true; bot.jailSkips = 0; 
       if(tokenContainers[10] && playerElements[bot.id]) tokenContainers[10].appendChild(playerElements[bot.id]);
+      await speak(`Silahkan giliran selanjutnya, lempar dadu`, false, 'arrival');
       return;
     } 
     // Properti
     else if (cell.price > 0 && !cell.special) {
       if (cell.owner === null) {
         if(shouldBotBuy(bot, cell)){
-          bot.money -= cell.price; cell.owner = bot.id;
           playVocalExpression('joy');
+          // Pembelian sukses dibacakan SEBELUM detil aset - sesuai permintaan
+          await speak(`Pembelian aset sukses, ${cell.name} sekarang milik ${bot.name}`, true, 'payment');
+          bot.money -= cell.price; cell.owner = bot.id;
+          let baseRentBot = Math.round(cell.price*0.2);
+          await speak(`Detil aset, ${cell.name}, harga beli ${formatRupiah(cell.price)}, sewa dasar ${formatRupiah(baseRentBot)}`, false, 'payment');
           await showEventModal("Bot Beli Properti!", `${bot.avatar} ${bot.name} [${bot.botLevel}] membeli ${cell.name} seharga ${formatRupiah(cell.price)}!`, "🏠", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img, 'payment');
-          await speak(`${bot.name} membeli ${cell.name}`, false, 'payment');
         } else {
           await showEventModal("Bot Lewati Beli", `${bot.name} [${bot.botLevel}] melewati ${cell.name} - strategi ${bot.botLevel}`, "🤔", [{text: "Lanjut", type: "btn-blue"}], "#636e72", cell.img, 'arrival');
         }
@@ -3549,12 +3609,13 @@
         let title = isC ? "Kartu Kesempatan" : "Kartu Dana Umum";
         let fullMessage = card.getOutCard ? `${card.text}\n\n[ANUGERAH: 1 Kartu Bebas Penjara!]` : `${card.text}\n\n${card.amount > 0 ? 'Penerimaan Kas: +' + formatRupiah(card.amount) : 'Pembayaran Upeti: -' + formatRupiah(Math.abs(card.amount))}`;
 
-        // Segera tayangkan popup dulu
+        // Segera tayangkan popup dulu, langsung bacakan tanpa menunggu tutup
         try { playVocalExpression(card.type || 'joy'); } catch(e) {}
         let isGoodEvent = (card.amount >= 0 && !card.goToJail);
-        await showRoyalScrollModal(title, fullMessage, isGoodEvent);
-        // Baru bacakan, tanpa rupiah, tanpa pengulangan
+        let modalPromise = showRoyalScrollModal(title, fullMessage, isGoodEvent);
+        // Langsung bacakan kartu (tanpa rupiah) selagi popup tampil
         await speak(`${title}, ${card.text}`, true, 'card');
+        await modalPromise;
 
         if (card.goToJail) {
           let rollBtnEl = document.getElementById('rollBtn');
@@ -3563,9 +3624,11 @@
           if(skipBtnEl) skipBtnEl.disabled = true;
           await showCinematic('jail', p); 
           playVocalExpression('cry');
-          await showEventModal("Masuk Penjara!", "Pengawal Pemerintah menyeret Anda ke penjara!", "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436", null, 'jail');
+          await speak(`${p.name} Tidak beruntung, Anda Masuk Penjara`, true, 'jail');
+          await showEventModalNoSpeak("Masuk Penjara!", "Pengawal Pemerintah menyeret Anda ke penjara!", "🚓", [{text: "Masuk Sel", type: "btn-red"}], "#2d3436", null);
           p.pos = 10; p.inJail = true; p.jailSkips = 0;
           if(tokenContainers[10] && playerElements[p.id]) tokenContainers[10].appendChild(playerElements[p.id]);
+          await speak(`Silahkan giliran selanjutnya, lempar dadu`, false, 'arrival');
         } else if (card.getOutCard) { 
           gameState.getOutCardsPool[card.deck]--; 
           p.getOutCards[card.deck] = (p.getOutCards[card.deck] || 0) + 1; 
@@ -3604,12 +3667,13 @@
       // TTS: untuk petak sudut jangan sebut pemilik, hanya untuk petak daerah yang bisa dibeli
       let isBuyable = (cell.price > 0 && !cell.special && cell.type !== 'corner');
       if(isBuyable){
-        let ownerName = "Belum ada";
-        if (cell.owner !== null) {
+        if (cell.owner === null) {
+          await speak(`Tiba di ${cell.name}, tanah kosong, belum ada Pemilik`, false, 'arrival');
+        } else {
           let owner = gameState.players.find(pl => pl.id === cell.owner);
-          ownerName = owner ? owner.name : "Pemain lain";
+          let ownerName = owner ? owner.name : "Pemain lain";
+          await speak(`Tiba di ${cell.name}, milik ${ownerName}`, false, 'arrival');
         }
-        await speak(`Tiba di ${cell.name}, milik ${ownerName}`, false, 'arrival');
       } else {
         // Petak sudut (GO, PENJARA, PARKIR BEBAS, MASUK PENJARA) dan petak khusus tidak sebut pemilik
         await speak(`Tiba di ${cell.name}`, false, 'arrival');
@@ -3650,13 +3714,16 @@
           let res = await showEventModal("Beli Properti?", purchaseModalMessage, "📄", [{text: "Beli", type: "btn-green", value: "b"}, {text: "Lewati", type: "btn-red", value: "s"}], "#0984e3", cell.img, 'arrival');
           if(res === 'b' && p.money >= cell.price) { 
             playVocalExpression('joy');
+            // Pembelian sukses dibacakan SEBELUM detil aset dashboard
+            await speak(`Pembelian aset sukses, ${cell.name} sekarang milik ${p.name}`, true, 'payment');
             p.money -= cell.price; cell.owner = p.id; 
+            await speak(`Detil aset, ${cell.name}, harga beli ${formatRupiah(cell.price)}, sewa dasar ${formatRupiah(baseRent)}`, false, 'payment');
           }
         } 
         else if (cell.owner === p.id && cell.color && !cell.mortgaged) {
           let houseCost = getHousePrice(cell); let hotelCost = getHotelPrice(cell);
           let canBuildHouse = cell.houses < 4 && cell.hotels === 0; let canBuildHotel = cell.houses === 4 && cell.hotels < 4;
-          let upgradeMsg = `Manajemen Bangunan di ${cell.name}\nRumah: ${cell.houses}dari 4 | Hotel: ${cell.hotels}/4\n`; let buttons = [{text: "Tutup", type: "btn-red", value: "close"}];
+          let upgradeMsg = `Manajemen Bangunan di ${cell.name}\nRumah: ${cell.houses}/4 | Hotel: ${cell.hotels}/4\n`; let buttons = [{text: "Tutup", type: "btn-red", value: "close"}];
           if(canBuildHouse && p.money >= houseCost) { upgradeMsg += `Harga 1 Rumah: ${formatRupiah(houseCost)}`; buttons.unshift({text: "Beli 1 Rumah", type: "btn-green", value: "house"}); } 
           else if(canBuildHotel && p.money >= hotelCost) { upgradeMsg += `Harga 1 Hotel: ${formatRupiah(hotelCost)}`; buttons.unshift({text: "Beli 1 Hotel", type: "btn-green", value: "hotel"}); } 
           else { upgradeMsg += `(Maksimal atau dana tidak cukup untuk peningkatan 1 tingkat sekaligus)`; }
