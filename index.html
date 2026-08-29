@@ -1331,7 +1331,13 @@ html, body {
           <div class="form-group">
             <label>Jumlah Pemain Manusia</label>
             <select id="cfgPlayerCount" onchange="updatePlayerVisibility()">
-              <option value="1">1 Pemain</option><option value="2" selected>2 Pemain</option><option value="3">3 Pemain</option><option value="4">4 Pemain</option><option value="5">5 Pemain</option><option value="6">6 Pemain</option>
+              <option value="0">0 (Hanya Komputer / Auto-Play)</option>
+              <option value="1">1 Pemain</option>
+              <option value="2" selected>2 Pemain</option>
+              <option value="3">3 Pemain</option>
+              <option value="4">4 Pemain</option>
+              <option value="5">5 Pemain</option>
+              <option value="6">6 Pemain</option>
             </select>
           </div>
           <div class="form-group" style="margin-top: 15px; border-top: 1px solid #ccc; padding-top: 15px;">
@@ -1344,6 +1350,9 @@ html, body {
                   <option value="1">1 Komputer</option>
                   <option value="2">2 Komputer</option>
                   <option value="3">3 Komputer</option>
+                  <option value="4">4 Komputer</option>
+                  <option value="5">5 Komputer</option>
+                  <option value="6">6 Komputer</option>
                 </select>
               </div>
               <div style="flex:1;">
@@ -1850,7 +1859,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       header.innerHTML = `${cell.name}<br><small style="font-size:12px; opacity:0.9;">${cell.color ? 'Kompleks: '+cell.color : cell.isUtility ? 'Utilitas' : 'Transportasi'}</small>`;
       
       let basePrice = cell.price;
-      let baseRent = Math.round(basePrice * 0.2);
+      let baseRent = getBaseRent(cell); // MENGGUNAKAN STANDAR BARU
       let monoRent = Math.round(baseRent * 5);
       let housePrice = getHousePrice(cell);
       let hotelPrice = getHotelPrice(cell);
@@ -2718,9 +2727,22 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
   }
 
   function updatePlayerVisibility() {
-    let humanCount = parseInt(document.getElementById('cfgPlayerCount').value) || 2;
-    let botCount = parseInt(document.getElementById('cfgBotCount').value) || 0;
+    let hc = parseInt(document.getElementById('cfgPlayerCount').value);
+    let humanCount = isNaN(hc) ? 2 : hc;
+    let bc = parseInt(document.getElementById('cfgBotCount').value);
+    let botCount = isNaN(bc) ? 0 : bc;
+    
     let total = humanCount + botCount;
+    
+    // Paksa minimal ada 2 pemain di arena
+    if (total < 2 && humanCount === 0) {
+       botCount = 2; total = 2;
+       document.getElementById('cfgBotCount').value = "2";
+    } else if (total < 2 && humanCount === 1) {
+       botCount = 1; total = 2;
+       document.getElementById('cfgBotCount').value = "1";
+    }
+    
     if (total > 6) total = 6;
     
     for(let i=1; i<=6; i++){
@@ -2730,8 +2752,18 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
           row.style.display = 'grid';
           let isBot = i > humanCount;
           let nameInput = document.getElementById(`pName${i}`);
-          if(isBot && nameInput && !nameInput.value.startsWith('Bot ')) { nameInput.value = `Bot ${i - humanCount} 🤖`; }
-        } else { row.style.display = 'none'; }
+          let typeSelect = document.getElementById(`pType${i}`);
+          
+          if(isBot && nameInput && !nameInput.value.startsWith('Bot ')) { 
+              nameInput.value = `Bot ${i - humanCount} 🤖`; 
+          }
+          if(typeSelect) {
+              typeSelect.value = isBot ? "bot" : "human";
+              typeSelect.disabled = true; // Kunci agar user paham ini sistem otomatis
+          }
+        } else { 
+          row.style.display = 'none'; 
+        }
       }
     }
   }
@@ -2774,10 +2806,16 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
 
   function readSettingsForm() {
     try {
-      let humanCount = parseInt(document.getElementById('cfgPlayerCount').value) || 2;
-      let botCount = parseInt(document.getElementById('cfgBotCount').value) || 0;
+      let hc = parseInt(document.getElementById('cfgPlayerCount').value);
+      let humanCount = isNaN(hc) ? 2 : hc;
+      let bc = parseInt(document.getElementById('cfgBotCount').value);
+      let botCount = isNaN(bc) ? 0 : bc;
       let botLevel = document.getElementById('cfgBotLevel').value || 'normal';
+      
       let totalPlayers = humanCount + botCount;
+      if(totalPlayers > 6) totalPlayers = 6;
+      if(totalPlayers < 2) totalPlayers = 2;
+      
       let modalAwal = parseInt(document.getElementById('cfgModal').value) || 1500;
       let players = [];
       
@@ -2800,17 +2838,16 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     } catch(e){ logError(e); }
   }
 
-async function updateMidGameSettings() {
+  async function updateMidGameSettings() {
     if(gameState.players.length === 0) {
       await showEventModalNoSpeak("Gagal Update", "Tidak ada permainan yang sedang berjalan. Klik Mulai Baru terlebih dahulu.", "❌", [{text:"OK", type:"btn-red"}]);
       return;
     }
     
-    // Baca pengaturan level dan jumlah bot yang baru
-    let humanCount = parseInt(document.getElementById('cfgPlayerCount').value) || 2;
+    let hc = parseInt(document.getElementById('cfgPlayerCount').value);
+    let humanCount = isNaN(hc) ? 2 : hc;
     let botLevel = document.getElementById('cfgBotLevel').value || 'normal';
     
-    // Update data pemain yang sudah ada di dalam game state tanpa menghapus posisinya
     for(let i=0; i < gameState.players.length; i++) {
       let formIdx = i + 1;
       let nameInput = document.getElementById(`pName${formIdx}`);
@@ -2968,6 +3005,14 @@ async function updateMidGameSettings() {
   function getHousePrice(cell) { return Math.round((cell.price * 0.2) * 1.5); }
   function getHotelPrice(cell) { return Math.round((cell.price * 0.2) * 2.5); }
 
+  // FUNGSI BARU: Standarisasi Harga Sewa Dasar
+  function getBaseRent(cell) {
+    if (!cell || cell.price <= 0 || cell.special) return 0;
+    let isTransport = !cell.color && !cell.isUtility && !cell.special && cell.type !== 'corner';
+    if (isTransport) return 50; // Paksa sewa dasar transport jadi 50 Juta
+    return Math.round(cell.price * 0.2); // Properti biasa tetap 20%
+  }
+
   function hasAnyMonopolyColorGroup(playerId) {
     let colors = [...new Set(gameState.boardData.filter(c => c.color).map(c => c.color))];
     for (let col of colors) {
@@ -2979,7 +3024,7 @@ async function updateMidGameSettings() {
 
   function calculateRent(cell, ownerId) {
     if (!cell || cell.price <= 0 || cell.special) return 0;
-    let baseRent = Math.round(cell.price * 0.2);
+    let baseRent = getBaseRent(cell);
     
     // ATURAN BARU 1: Tarif Progresif Transportasi (Stasiun/Bandara dll)
     let isTransport = !cell.color && !cell.isUtility && !cell.special && cell.type !== 'corner';
@@ -3367,21 +3412,10 @@ async function updateMidGameSettings() {
         evMediaContainer.innerHTML = "";
         if(mediaUrl) { 
           let img = document.createElement('img'); 
-          img.src = mediaUrl; 
-          img.className = 'ev-media-img'; 
-          img.loading = 'eager';
-          img.style.display = 'block';
+          img.src = mediaUrl;  img.className = 'ev-media-img'; img.loading = 'eager'; img.style.display = 'block';
           if(evIcon) evIcon.style.display = 'none';
-          img.onerror = function(){ 
-            // Jika foto gagal, coba lagi atau tampilkan icon, tapi jangan flicker
-            console.log('Image failed to load:', mediaUrl);
-            this.style.display='none'; 
-            if(evIcon) evIcon.style.display='block'; 
-          }; 
-          img.onload = function(){
-            this.style.display='block';
-            if(evIcon) evIcon.style.display='none';
-          };
+          img.onerror = function(){ this.style.display='none'; if(evIcon) evIcon.style.display='block'; }; 
+          img.onload = function(){ this.style.display='block'; if(evIcon) evIcon.style.display='none'; };
           evMediaContainer.appendChild(img); 
         } else {
           if(evIcon) evIcon.style.display='block';
@@ -3399,17 +3433,21 @@ async function updateMidGameSettings() {
 
         modal.style.display = 'flex'; 
         let delaySetting = document.getElementById('cfgButtonDelay')?.value || 'normal';
-        // FIX: popup setelah tiba sampai giliran harus terdengar, pakai general biar tidak terfilter
         let speakPromise = speak(message, false, 'general');
+
+        // PENTING: Cek jika 100% dimainkan Bot (Simulasi)
+        let allBots = gameState.players.length > 0 && gameState.players.every(p => p.isBot);
 
         if(delaySetting === 'normal') {
           speakPromise.then(() => {
             actionButtons.forEach(b => { b.disabled = false; b.style.opacity = "1"; b.style.cursor = "pointer"; });
+            if (allBots) { setTimeout(()=>{ clearTimeout(timeoutId); safeResolve(buttons[0]?.value || null); }, 1500); }
           });
         } else {
           let waitTime = parseInt(delaySetting);
           setTimeout(() => {
             actionButtons.forEach(b => { b.disabled = false; b.style.opacity = "1"; b.style.cursor = "pointer"; });
+            if (allBots) { setTimeout(()=>{ clearTimeout(timeoutId); safeResolve(buttons[0]?.value || null); }, 1500); }
           }, waitTime);
         }
 
@@ -3623,36 +3661,30 @@ async function updateMidGameSettings() {
         const evMediaContainer = document.getElementById('evMediaContainer'); 
         const evIcon = document.getElementById('evIcon'); 
         const evActions = document.getElementById('evActions');
+        
         if(!modal || !evTitle || !evMessage || !evActions){ resolve(null); return; }
+        
         let resolved = false;
         const safeResolve = (val) => { 
           if(!resolved){ resolved = true; try { modal.style.display = 'none'; } catch(e){} resolve(val); } 
         };
         const timeoutId = setTimeout(()=>{ safeResolve(buttons[0]?.value || null); }, 60000);
+        
         evTitle.innerText = title; evTitle.style.background = headerColor; evMessage.innerText = message; 
         if(evIcon){ evIcon.innerText = icon || "🎲"; evIcon.style.display = mediaUrl ? 'none' : 'block'; }
+        
         evMediaContainer.innerHTML = "";
         if(mediaUrl) { 
           let img = document.createElement('img'); 
-          img.src = mediaUrl; 
-          img.className = 'ev-media-img'; 
-          img.loading = 'eager';
-          img.style.display = 'block';
+          img.src = mediaUrl; img.className = 'ev-media-img'; img.loading = 'eager'; img.style.display = 'block';
           if(evIcon) evIcon.style.display = 'none';
-          img.onerror = function(){ 
-            // Jika foto gagal, coba lagi atau tampilkan icon, tapi jangan flicker
-            console.log('Image failed to load:', mediaUrl);
-            this.style.display='none'; 
-            if(evIcon) evIcon.style.display='block'; 
-          }; 
-          img.onload = function(){
-            this.style.display='block';
-            if(evIcon) evIcon.style.display='none';
-          };
+          img.onerror = function(){ this.style.display='none'; if(evIcon) evIcon.style.display='block'; }; 
+          img.onload = function(){ this.style.display='block'; if(evIcon) evIcon.style.display='none'; };
           evMediaContainer.appendChild(img); 
         } else {
           if(evIcon) evIcon.style.display='block';
         }
+        
         evActions.innerHTML = "";
         let actionButtons = [];
         buttons.forEach(btn => { 
@@ -3662,8 +3694,15 @@ async function updateMidGameSettings() {
           b.onclick = () => { if(b.disabled) return; clearTimeout(timeoutId); safeResolve(btn.value); }; 
           evActions.appendChild(b); actionButtons.push(b);
         });
+        
         modal.style.display = 'flex'; 
-        // Tidak ada speak - popup tidak perlu dibaca, langsung bisa interrupt ke silahkan giliran
+
+        // PENTING: Cek jika 100% dimainkan Bot (Simulasi)
+        let allBots = gameState.players.length > 0 && gameState.players.every(p => p.isBot);
+        if(allBots) {
+           setTimeout(()=>{ clearTimeout(timeoutId); safeResolve(buttons[0]?.value || null); }, 2500); 
+        }
+
         modal.onclick = (e) => { 
           if(e.target === modal){ clearTimeout(timeoutId); safeResolve(buttons[0]?.value || null); } 
         };
@@ -3680,9 +3719,16 @@ async function updateMidGameSettings() {
       btn.style.background = isGood ? '#27ae60' : '#c0392b';
       btn.innerHTML = isGood ? 'TERIMA<br>' : 'JALANKAN<br>HUKUMAN';
       modal.style.display = 'flex';
+      
       let cleanup = () => { modal.style.display = 'none'; resolve(); };
       btn.onclick = cleanup;
       modal.onclick = (e) => { if (e.target === modal) cleanup(); };
+
+      // PENTING: Cek jika 100% dimainkan Bot (Simulasi)
+      let allBots = gameState.players.length > 0 && gameState.players.every(p => p.isBot);
+      if(allBots) {
+         setTimeout(()=>{ cleanup(); }, 3500); 
+      }
     });
   }
 
@@ -3800,7 +3846,7 @@ async function updateMidGameSettings() {
       if(money < price + 50) return false;
       if(completesMonopoly) return true;
       // ROI: harga sewa dasar vs harga beli
-      let baseRent = Math.round(price*0.2);
+      let baseRent = getBaseRent(cell);
       let roi = baseRent / price;
       // Jika ROI tinggi atau bagian dari rencana monopoli
       if(roi > 0.18) return true;
@@ -4072,7 +4118,7 @@ async function updateMidGameSettings() {
           bot.money -= cell.price; cell.owner = bot.id;
           updateUI(); 
           playVocalExpression('joy');
-          let baseRentBot = Math.round(cell.price*0.2);
+          let baseRentBot = getBaseRent(cell); // MENGGUNAKAN STANDAR BARU
           let pSpeak = speak(`Pembelian sukses. ${cell.name} sekarang milik ${bot.name}. Harga beli ${formatRupiahSpoken(cell.price)}. Sewa dasar ${formatRupiahSpoken(baseRentBot)}.`, true, 'payment');
           let pModal = showEventModalNoSpeak("Bot Beli Properti!", `${bot.avatar} ${bot.name} [${bot.botLevel}] membeli ${cell.name} seharga ${formatRupiah(cell.price)}!`, "🏠", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img);
           await Promise.all([pSpeak, pModal]);
@@ -4314,7 +4360,7 @@ async function updateMidGameSettings() {
         return;
       } 
       else if (cell.price > 0 && !cell.special) {
-        let baseRent = cell.price > 0 ? Math.round(cell.price * 0.2) : 0;
+        let baseRent = getBaseRent(cell); // MENGGUNAKAN STANDAR BARU
         if (cell.owner === null) {
           if (p.money < cell.price) {
             playVocalExpression('sad');
@@ -4327,7 +4373,7 @@ async function updateMidGameSettings() {
             p.money -= cell.price; cell.owner = p.id; 
             updateUI(); saveLocalState();
             playVocalExpression('joy');
-            let baseRent = Math.round(cell.price * 0.2);
+            // Menghapus deklarasi ulang baseRent agar mengambil dari atas
             let pSpeak = speak(`Pembelian sukses. ${cell.name} sekarang milik ${p.name}. Harga beli ${formatRupiahSpoken(cell.price)}. Sewa dasar ${formatRupiahSpoken(baseRent)}.`, true, 'general');
             let pModal = showEventModalNoSpeak("Beli Properti Sukses!", `Anda berhasil membeli ${cell.name} seharga ${formatRupiah(cell.price)}!`, "🏠", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img);
             await Promise.all([pSpeak, pModal]);
