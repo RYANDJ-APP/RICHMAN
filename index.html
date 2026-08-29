@@ -3450,7 +3450,7 @@ async function updateMidGameSettings() {
          rollBtn.classList.add('turn-highlight'); 
          rollBtn.focus(); // AUTO-FOCUS AGAR BISA ENTER/SPASI
       }
-      if(cp.isBot) executeBotTurn(cp);
+      // PENTING: Baris eksekusi bot di sini dihapus agar tidak berjalan ganda (di-handle oleh endTurn)
     }
   }
 
@@ -3568,7 +3568,7 @@ async function updateMidGameSettings() {
 
       await animatePlayerWalk(p, steps);
       await handleLanded(p); 
-      checkDebtStatus(p);
+      await checkDebtStatus(p);
 
       if (isDouble && !p.inJail) {
         if(rollBtnEl) rollBtnEl.disabled = true;
@@ -3933,6 +3933,7 @@ async function updateMidGameSettings() {
     } else {
       await animatePlayerWalk(bot, steps);
       await handleBotLanding(bot);
+      await checkDebtStatus(bot); // <-- Tambahkan await di sini
     }
 
     // Aturan dadu dobel berlaku sama untuk bot dan manusia
@@ -4050,8 +4051,9 @@ async function updateMidGameSettings() {
     // Pajak - wajib bayar sama seperti manusia - TTS baru
     if (cell.special === 'tax') {
       playVocalExpression('sad');
-      await speak(`${bot.name} membayar pajak sebesar ${formatRupiahSpoken(cell.price)}`, true, 'payment');
-      await showEventModalNoSpeak("Bayar Pajak - Bot", `${bot.name} bayar pajak ${formatRupiah(cell.price)}`, "💸", [{text: "Bayar", type: "btn-red"}], "#d63031", null);
+      let pSpeak = speak(`${bot.name} membayar pajak sebesar ${formatRupiahSpoken(cell.price)}`, true, 'payment');
+      let pModal = showEventModalNoSpeak("Bayar Pajak - Bot", `${bot.name} bayar pajak ${formatRupiah(cell.price)}`, "💸", [{text: "Bayar", type: "btn-red"}], "#d63031", null);
+      await Promise.all([pSpeak, pModal]);
       bot.money -= cell.price;
       return;
     }
@@ -4072,8 +4074,9 @@ async function updateMidGameSettings() {
           updateUI(); 
           playVocalExpression('joy');
           let baseRentBot = Math.round(cell.price*0.2);
-          await speak(`Pembelian sukses. ${cell.name} sekarang milik ${bot.name}. Harga beli ${formatRupiahSpoken(cell.price)}. Sewa dasar ${formatRupiahSpoken(baseRentBot)}.`, true, 'payment');
-          await showEventModalNoSpeak("Bot Beli Properti!", `${bot.avatar} ${bot.name} [${bot.botLevel}] membeli ${cell.name} seharga ${formatRupiah(cell.price)}!`, "🏠", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img);
+          let pSpeak = speak(`Pembelian sukses. ${cell.name} sekarang milik ${bot.name}. Harga beli ${formatRupiahSpoken(cell.price)}. Sewa dasar ${formatRupiahSpoken(baseRentBot)}.`, true, 'payment');
+          let pModal = showEventModalNoSpeak("Bot Beli Properti!", `${bot.avatar} ${bot.name} [${bot.botLevel}] membeli ${cell.name} seharga ${formatRupiah(cell.price)}!`, "🏠", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img);
+          await Promise.all([pSpeak, pModal]);
         }
       } 
       else if (cell.owner === bot.id && cell.color && !cell.mortgaged) {
@@ -4102,10 +4105,11 @@ async function updateMidGameSettings() {
       else if (cell.owner !== bot.id && !cell.mortgaged) {
         // Bayar sewa - sama seperti manusia
         let owner = gameState.players.find(pl => pl.id === cell.owner); if(!owner) return;
-        let baseRent = cell.price > 0 ? Math.round(cell.price * 0.2) : 0;
         let rent = calculateRent(cell, owner.id);
         playVocalExpression('sad');
-        await showEventModal("Bayar Sewa! - Bot", `${bot.name} bayar sewa ${formatRupiah(rent)} ke ${owner.name} untuk ${cell.name}`, "🤝", [{text: "Bayar", type: "btn-blue"}], "#e84393", cell.img, 'payment');
+        let pSpeak = speak(`${bot.name} bayar sewa ${formatRupiahSpoken(rent)} ke ${owner.name} untuk ${cell.name}`, true, 'payment');
+        let pModal = showEventModalNoSpeak("Bayar Sewa! - Bot", `${bot.name} bayar sewa ${formatRupiah(rent)} ke ${owner.name} untuk ${cell.name}`, "🤝", [{text: "Bayar", type: "btn-blue"}], "#e84393", cell.img);
+        await Promise.all([pSpeak, pModal]);
         bot.money -= rent; owner.money += rent;
       }
     }
@@ -4298,9 +4302,9 @@ async function updateMidGameSettings() {
 
       if (cell.special === 'tax') {
         playVocalExpression('sad');
-        // TTS baru: Pemain? silahkan bayar pajak ?anda
-        await speak(`${p.name} silahkan bayar pajak ${formatRupiahSpoken(cell.price)}`, true, 'payment');
-        await showEventModal("Bayar Pajak", `Tagihan pajak Anda sebesar ${formatRupiah(cell.price)}`, "💸", [{text: "Bayar", type: "btn-red"}], "#d63031", null, 'payment');
+        let pSpeak = speak(`${p.name} silahkan bayar pajak ${formatRupiahSpoken(cell.price)}`, true, 'payment');
+        let pModal = showEventModalNoSpeak("Bayar Pajak", `Tagihan pajak Anda sebesar ${formatRupiah(cell.price)}`, "💸", [{text: "Bayar", type: "btn-red"}], "#d63031", null);
+        await Promise.all([pSpeak, pModal]);
         p.money -= cell.price;
         return;
       } 
@@ -4325,10 +4329,9 @@ async function updateMidGameSettings() {
             updateUI(); saveLocalState();
             playVocalExpression('joy');
             let baseRent = Math.round(cell.price * 0.2);
-            // Satukan kalimat dan buat ringkas, tidak terpotong
-            await speak(`Pembelian sukses. ${cell.name} sekarang milik ${p.name}. Harga beli ${formatRupiahSpoken(cell.price)}. Sewa dasar ${formatRupiahSpoken(baseRent)}.`, true, 'general');
-            // Ganti jadi showEventModalNoSpeak agar tidak dibaca lagi
-            await showEventModalNoSpeak("Beli Properti Sukses!", `Anda berhasil membeli ${cell.name} seharga ${formatRupiah(cell.price)}!`, "🏠", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img);
+            let pSpeak = speak(`Pembelian sukses. ${cell.name} sekarang milik ${p.name}. Harga beli ${formatRupiahSpoken(cell.price)}. Sewa dasar ${formatRupiahSpoken(baseRent)}.`, true, 'general');
+            let pModal = showEventModalNoSpeak("Beli Properti Sukses!", `Anda berhasil membeli ${cell.name} seharga ${formatRupiah(cell.price)}!`, "🏠", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img);
+            await Promise.all([pSpeak, pModal]);
           }
         } 
         else if (cell.owner === p.id && cell.color && !cell.mortgaged) {
@@ -4363,7 +4366,9 @@ async function updateMidGameSettings() {
           let rent = calculateRent(cell, owner.id); 
           let rentDesc = `Anda berhenti di properti milik ${owner.avatar} ${owner.name}.\nWilayah: ${cell.name}\n\nTotal Tagihan Sewa: ${formatRupiah(rent)}`;
           playVocalExpression('sad');
-          await showEventModal("Bayar Sewa Properti!", rentDesc, "🤝", [{text: "Bayar ke " + owner.name, type: "btn-blue", value: "p"}], "#e84393", cell.img, 'payment');
+          let pSpeak = speak(`${p.name} membayar sewa kepada ${owner.name} sebesar ${formatRupiahSpoken(rent)}`, true, 'payment');
+          let pModal = showEventModalNoSpeak("Bayar Sewa Properti!", rentDesc, "🤝", [{text: "Bayar ke " + owner.name, type: "btn-blue", value: "p"}], "#e84393", cell.img);
+          await Promise.all([pSpeak, pModal]);
           p.money -= rent; owner.money += rent;
         }
       }
