@@ -2272,6 +2272,44 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     }
   }, 1000);
 
+// === SHORTCUT KEYBOARD ===
+  document.addEventListener('keydown', function(e) {
+    // Jangan aktifkan shortcut jika pemain sedang mengetik nama / mengisi form
+    if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    
+    let key = e.key.toLowerCase();
+    
+    // R atau SPACE = Lempar Dadu
+    if(key === 'r' || e.code === 'Space') {
+      let btn = document.getElementById('rollBtn');
+      if(btn && !btn.disabled && !isHoldingDice && btn.style.display !== 'none') {
+        e.preventDefault();
+        startHoldDice();
+        setTimeout(releaseHoldDice, 150);
+      }
+    }
+    // I atau A = Info Aset
+    else if(key === 'i' || key === 'a') {
+      e.preventDefault(); openAssetsModal();
+    }
+    // F = Fullscreen
+    else if(key === 'f') {
+      e.preventDefault(); toggleFullscreenManual();
+    }
+    // + atau = -> Zoom In
+    else if(key === '+' || key === '=') {
+      zoomBoard(0.1);
+    }
+    // - atau _ -> Zoom Out
+    else if(key === '-' || key === '_') {
+      zoomBoard(-0.1);
+    }
+    // P atau C = Control Panel Settings
+    else if(key === 'p' || key === 'c') {
+      e.preventDefault(); openSettings();
+    }
+  });
+
   // Prevent text selection via CSS tambahan
   let antiCopyStyle = document.createElement('style');
   antiCopyStyle.innerHTML = `
@@ -2612,7 +2650,6 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
   function speak(text, interrupt = false, category = 'general') {
     return new Promise((resolve) => {
       try {
-        // FIX: ubah pembacaan Rp 200 Juta jadi 200 Juta Rupiah, dan 1/4 jadi satu dari empat
         let spokenText = convertRpToSpoken(text);
         spokenText = convertSlashToSpoken(spokenText);
         let voiceCheckbox = document.getElementById('cfgVoice');
@@ -2646,13 +2683,21 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
         utterance.onend = () => {
           let rollBtn = document.getElementById('rollBtn');
           let cp = gameState.players[gameState.turnIndex];
-          if(rollBtn && cp && !cp.isBot) { rollBtn.disabled = false; rollBtn.classList.add('turn-highlight'); }
+          if(rollBtn && cp && !cp.isBot) { 
+             rollBtn.disabled = false; 
+             rollBtn.classList.add('turn-highlight'); 
+             rollBtn.focus(); // AUTO-FOCUS AGAR BISA ENTER
+          }
           resolve();
         };
         utterance.onerror = () => {
           let rollBtn = document.getElementById('rollBtn');
           let cp = gameState.players[gameState.turnIndex];
-          if(rollBtn && cp && !cp.isBot) { rollBtn.disabled = false; rollBtn.classList.add('turn-highlight'); }
+          if(rollBtn && cp && !cp.isBot) { 
+             rollBtn.disabled = false; 
+             rollBtn.classList.add('turn-highlight'); 
+             rollBtn.focus(); // AUTO-FOCUS AGAR BISA ENTER
+          }
           resolve();
         };
 
@@ -3348,9 +3393,14 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     if(cp) {
       let rollBtn = document.getElementById('rollBtn');
       if(rollBtn) { rollBtn.disabled = true; rollBtn.classList.remove('turn-highlight'); }
-      // Cukup sekali membacakan giliran lempar dadu langsung tunggu pemain tekan lempar dadu
+      
       await speak(`Giliran ${cp.name}. Silakan lempar dadu.`, true, 'general');
-      if(rollBtn && !cp.inJail && !cp.isBot) { rollBtn.disabled = false; rollBtn.classList.add('turn-highlight'); }
+      
+      if(rollBtn && !cp.inJail && !cp.isBot) { 
+         rollBtn.disabled = false; 
+         rollBtn.classList.add('turn-highlight'); 
+         rollBtn.focus(); // AUTO-FOCUS AGAR BISA ENTER/SPASI
+      }
       if(cp.isBot) executeBotTurn(cp);
     }
   }
@@ -3946,11 +3996,11 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     // Pajak - wajib bayar sama seperti manusia - TTS baru
     if (cell.special === 'tax') {
       playVocalExpression('sad');
-      await speak(`${bot.name} silahkan bayar pajak ${formatRupiahSpoken(cell.price)}`, true, 'payment');
-      await showEventModal("Bayar Pajak - Bot", `${bot.name} bayar pajak ${formatRupiah(cell.price)}`, "💸", [{text: "Bayar", type: "btn-red"}], "#d63031", null, 'payment');
+      await speak(`${bot.name} membayar pajak sebesar ${formatRupiahSpoken(cell.price)}`, true, 'payment');
+      await showEventModalNoSpeak("Bayar Pajak - Bot", `${bot.name} bayar pajak ${formatRupiah(cell.price)}`, "💸", [{text: "Bayar", type: "btn-red"}], "#d63031", null);
       bot.money -= cell.price;
       return;
-    } 
+    }
     // Masuk Penjara (petak 30) - cukup popup saja
     else if (bot.pos === 30) {
       playVocalExpression('cry');
@@ -3964,16 +4014,12 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     else if (cell.price > 0 && !cell.special) {
       if (cell.owner === null) {
         if(shouldBotBuy(bot, cell)){
-          // Langsung potong dan set owner - sukses langsung dibacakan setelah keputusan beli bot
           bot.money -= cell.price; cell.owner = bot.id;
           updateUI(); 
           playVocalExpression('joy');
-          await speak(`Pembelian aset sukses, ${cell.name} sekarang milik ${bot.name}`, true, 'payment');
           let baseRentBot = Math.round(cell.price*0.2);
-          await speak(`Detil aset, ${cell.name}, harga beli ${formatRupiahSpoken(cell.price)}, sewa dasar ${formatRupiahSpoken(baseRentBot)}`, false, 'payment');
-          await showEventModal("Bot Beli Properti!", `${bot.avatar} ${bot.name} [${bot.botLevel}] membeli ${cell.name} seharga ${formatRupiah(cell.price)}!`, "🏠", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img, 'payment');
-        } else {
-          await showEventModal("Bot Lewati Beli", `${bot.name} [${bot.botLevel}] melewati ${cell.name} - strategi ${bot.botLevel}`, "🤔", [{text: "Lanjut", type: "btn-blue"}], "#636e72", cell.img, 'arrival');
+          await speak(`Pembelian sukses. ${cell.name} sekarang milik ${bot.name}. Harga beli ${formatRupiahSpoken(cell.price)}. Sewa dasar ${formatRupiahSpoken(baseRentBot)}.`, true, 'payment');
+          await showEventModalNoSpeak("Bot Beli Properti!", `${bot.avatar} ${bot.name} [${bot.botLevel}] membeli ${cell.name} seharga ${formatRupiah(cell.price)}!`, "🏠", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img);
         }
       } 
       else if (cell.owner === bot.id && cell.color && !cell.mortgaged) {
@@ -3987,15 +4033,15 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
             await showCinematic('buildHouse', bot, cell.name);
             bot.money -= houseCost; cell.houses = newHouseBot;
             playVocalExpression('joy');
-            await speak(`Sukses pada peningkatan aset penambahan rumah ke ${newHouseBot} dari ${oldHouseBot} menjadi ${newHouseBot} milik ${bot.name} dipetak ${cell.name}`, true, 'build');
-            await showEventModal("Bot Bangun Rumah!", `${bot.name} [${bot.botLevel}] bangun rumah ke-${cell.houses} di ${cell.name}`, "🏗️", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img, 'build');
+            await speak(`Sukses membangun rumah ke ${newHouseBot} milik ${bot.name} di ${cell.name}`, true, 'build');
+            await showEventModalNoSpeak("Bot Bangun Rumah!", `${bot.name} [${bot.botLevel}] bangun rumah ke-${cell.houses} di ${cell.name}`, "🏗️", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img);
           } else if(canBuildHotel){
             let oldHotelBot = cell.hotels; let newHotelBot = oldHotelBot + 1;
             await showCinematic('buildHotel', bot, cell.name);
             bot.money -= hotelCost; cell.hotels = newHotelBot;
             playVocalExpression('joy');
-            await speak(`Sukses pada peningkatan aset penambahan hotel ke ${newHotelBot} dari ${oldHotelBot} menjadi ${newHotelBot} milik ${bot.name} dipetak ${cell.name}`, true, 'build');
-            await showEventModal("Bot Bangun Hotel!", `${bot.name} [${bot.botLevel}] bangun hotel ke-${cell.hotels} di ${cell.name}`, "🏨", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img, 'build');
+            await speak(`Sukses membangun hotel milik ${bot.name} di ${cell.name}`, true, 'build');
+            await showEventModalNoSpeak("Bot Bangun Hotel!", `${bot.name} [${bot.botLevel}] bangun hotel di ${cell.name}`, "🏨", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img);
           }
         }
       }
@@ -4224,8 +4270,11 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
             p.money -= cell.price; cell.owner = p.id; 
             updateUI(); saveLocalState();
             playVocalExpression('joy');
-            await speak(`Pembelian aset sukses, ${cell.name} sekarang milik ${p.name}`, true, 'general');
-            await speak(`Detil aset, ${cell.name}, harga beli ${formatRupiahSpoken(cell.price)}, sewa dasar ${formatRupiahSpoken(baseRent)}`, false, 'general');
+            let baseRent = Math.round(cell.price * 0.2);
+            // Satukan kalimat dan buat ringkas, tidak terpotong
+            await speak(`Pembelian sukses. ${cell.name} sekarang milik ${p.name}. Harga beli ${formatRupiahSpoken(cell.price)}. Sewa dasar ${formatRupiahSpoken(baseRent)}.`, true, 'general');
+            // Ganti jadi showEventModalNoSpeak agar tidak dibaca lagi
+            await showEventModalNoSpeak("Beli Properti Sukses!", `Anda berhasil membeli ${cell.name} seharga ${formatRupiah(cell.price)}!`, "🏠", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img);
           }
         } 
         else if (cell.owner === p.id && cell.color && !cell.mortgaged) {
