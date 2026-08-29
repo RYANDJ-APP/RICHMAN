@@ -2572,7 +2572,14 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
   }
 
   function convertRpToSpoken(text){
-    return text.replace(/(?:Rp\.?\s*)?(\d+(?:[\.,]\d+)?)\s*(Jt\.?|Juta|M\.?|Milyar|Miliar|rb|Triliun)?/gi, (match, numStr, unitRaw) => {
+    return text.replace(/(Rp\.?\s*)?(\d+(?:[\.,]\d+)?)\s*(Jt\.?|Juta|M\.?|Milyar|Miliar|rb|Triliun)?/gi, (match, rp, numStr, unitRaw) => {
+      
+      // Jika TIDAK ADA awalan "Rp" dan TIDAK ADA akhiran "Juta/Milyar", berarti ini angka biasa.
+      // Kembalikan angka aslinya agar mesin TTS membacanya secara normal (tanpa embel-embel rupiah).
+      if (!rp && !unitRaw) {
+        return match; 
+      }
+
       let unit = (unitRaw || "").toLowerCase();
       let unitSpoken = unit.startsWith('t') ? "Triliun" : (unit.startsWith('m') ? "Milyar" : "Juta");
       let originalNum = numStr;
