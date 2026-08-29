@@ -1362,9 +1362,12 @@ html, body {
 
         <div class="sidebar-section">
           <div class="btn-group" style="margin-top:5px;">
-            <button class="btn-base btn-save" onclick="startNewGame()">🚀 Mulai Baru</button>
-            <button class="btn-base" style="background:#6c5ce7;" onclick="openSessionModal()">💾 Sesi Saya</button>
-            <button class="btn-base btn-load" onclick="loadLocalState()">📂 Lanjut (Lokal)</button>
+            <button class="btn-base btn-save" onclick="startNewGame()">🚀 Mulai Baru (Reset)</button>
+            <button class="btn-base" style="background:#f39c12;" onclick="updateMidGameSettings()">✏️ Update Sesi Saat Ini (Tanpa Reset)</button>
+          </div>
+          <div class="btn-group" style="margin-top: 10px;">
+            <button class="btn-base" style="background:#6c5ce7;" onclick="openSessionModal()">💾 Manajemen Sesi</button>
+            <button class="btn-base btn-load" onclick="loadLocalState()">📂 Muat Ulang (Lokal)</button>
           </div>
           <div class="btn-group" style="margin-top: 10px;">
             <button class="btn-base btn-cloud" onclick="saveToCloud()">☁️ Simpan (Sheet)</button>
@@ -2798,6 +2801,43 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     } catch(e){ logError(e); }
   }
 
+async function updateMidGameSettings() {
+    if(gameState.players.length === 0) {
+      await showEventModalNoSpeak("Gagal Update", "Tidak ada permainan yang sedang berjalan. Klik Mulai Baru terlebih dahulu.", "❌", [{text:"OK", type:"btn-red"}]);
+      return;
+    }
+    
+    // Baca pengaturan level dan jumlah bot yang baru
+    let humanCount = parseInt(document.getElementById('cfgPlayerCount').value) || 2;
+    let botLevel = document.getElementById('cfgBotLevel').value || 'normal';
+    
+    // Update data pemain yang sudah ada di dalam game state tanpa menghapus posisinya
+    for(let i=0; i < gameState.players.length; i++) {
+      let formIdx = i + 1;
+      let nameInput = document.getElementById(`pName${formIdx}`);
+      let avSelect = document.getElementById(`pAvatar${formIdx}`);
+      
+      if(nameInput && avSelect) {
+        gameState.players[i].name = nameInput.value;
+        let opt = avSelect.options[avSelect.selectedIndex];
+        gameState.players[i].avatar = opt.value;
+        
+        let avId = opt.getAttribute('data-id');
+        let matched = avatars.find(a => a.id === avId) || avatars[0];
+        gameState.players[i].pitch = matched.pitch;
+        
+        let isBot = formIdx > humanCount;
+        gameState.players[i].isBot = isBot;
+        if(isBot) gameState.players[i].botLevel = botLevel;
+      }
+    }
+    
+    updateUI(); 
+    saveLocalState();
+    await showEventModalNoSpeak("Update Berhasil", "Nama, Avatar, Tipe (Manusia/Bot), dan Level Kecerdasan berhasil diperbarui di tengah permainan!", "✅", [{text:"OK", type:"btn-green"}]);
+    closeSettings();
+  }
+
   async function startNewGame() {
     forceFullscreen();
     try {
@@ -3465,14 +3505,11 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       await new Promise(r => setTimeout(r, 1500));
       if (overlayDice) overlayDice.style.display = 'none';
 
-      let holdDuration = Date.now() - pressStartTime; 
-      let randomSeed = (holdDuration % 97) + Math.floor(Math.random() * 1000);
-      let d1 = (randomSeed % 6) + 1; 
-      let d2 = ((Math.floor(randomSeed / 7)) % 6) + 1;
-      if (d1 === d2 && Math.random() > 0.3) d2 = (d2 % 6) + 1; 
-
-      let steps = d1 + d2; 
-      let isDouble = (d1 === d2);
+      let diceResult = generateFairDice();
+      let d1 = diceResult.d1; 
+      let d2 = diceResult.d2;
+      let steps = diceResult.total; 
+      let isDouble = diceResult.isDouble;
       if (isDouble) doubleCount++; else doubleCount = 0;
 
       let p = gameState.players[gameState.turnIndex]; 
@@ -3569,6 +3606,13 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
         endTurn(); 
       } 
     } catch(e){ endTurn(); } 
+  }
+
+// --- MESIN DADU ADIL (TANPA CHEAT) ---
+  function generateFairDice() {
+    let d1 = Math.floor(Math.random() * 6) + 1;
+    let d2 = Math.floor(Math.random() * 6) + 1;
+    return { d1, d2, total: d1 + d2, isDouble: d1 === d2 };
   }
 
   function showEventModalNoSpeak(title, message, icon, buttons, headerColor = "#0984e3", mediaUrl = null) {
@@ -3797,10 +3841,11 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
   }
 
   async function executeBotTurn(bot) {
-    let d1 = Math.floor(Math.random() * 6) + 1;
-    let d2 = Math.floor(Math.random() * 6) + 1;
-    let steps = d1 + d2;
-    let isDouble = (d1 === d2);
+    let diceResult = generateFairDice();
+    let d1 = diceResult.d1;
+    let d2 = diceResult.d2;
+    let steps = diceResult.total;
+    let isDouble = diceResult.isDouble;
     if (isDouble) doubleCount++; else doubleCount = 0;
 
     let diceDisp = document.getElementById('diceDisplay');
