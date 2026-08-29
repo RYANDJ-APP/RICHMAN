@@ -2611,13 +2611,12 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
   }
 
   function convertRpToSpoken(text){
-    // Regex diubah dengan (?:\s*rupiah)? di akhir.
-    // Jika ada kata "rupiah" yang tertinggal/tertulis, kata tersebut akan "ditelan" dan diganti dengan 1 kata "Rupiah" saja.
-    return text.replace(/(Rp\.?\s*)?(\d+(?:[\.,]\d+)?)\s*(Jt\.?|Juta|M\.?|Milyar|Miliar|rb|Triliun)?(?:\s*rupiah)?/gi, (match, rp, numStr, unitRaw) => {
+    // Regex diperbarui: Singkatan seperti "M" dihapus agar tidak salah tangkap dengan kata "menjadi", "milik", atau "maju"
+    return text.replace(/(Rp\.?\s*)?(\d+(?:[\.,]\d+)?)\s*(Juta|Milyar|Miliar|Triliun)?(?:\s*rupiah)?/gi, (match, rp, numStr, unitRaw) => {
       
       let hasRupiah = match.toLowerCase().includes('rupiah');
       
-      // Syarat Pengecualian: Jika tidak ada Rp, tidak ada satuan Juta/Milyar, dan tidak ada kata rupiah = Ini Angka Biasa.
+      // Syarat Pengecualian: Jika tidak ada Rp, tidak ada Juta/Milyar, dan tidak ada rupiah = Angka Biasa.
       if (!rp && !unitRaw && !hasRupiah) {
         return match; 
       }
@@ -2640,7 +2639,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
         intSpokenStr = angkaToKata(n);
       }
       
-      // Rangkai hasil akhir: Angka + (Juta/Milyar) + Rupiah (hanya 1 kali)
+      // Rangkai hasil akhir: Angka + (Juta/Milyar) + Rupiah
       let finalStr = intSpokenStr;
       if (unitSpoken) finalStr += " " + unitSpoken;
       finalStr += " Rupiah";
@@ -4349,7 +4348,7 @@ async function updateMidGameSettings() {
             try{ playBuildSound(); }catch(e){}
             p.money -= houseCost; cell.houses = newHouse; 
             playVocalExpression('joy');
-            await speak(`Sukses pada peningkatan aset penambahan rumah ke ${newHouse} dari ${oldHouse} menjadi ${newHouse} milik ${p.name} dipetak ${cell.name}`, true, 'build');
+            await speak(`Sukses membangun rumah ke ${newHouse} milik ${p.name} di wilayah ${cell.name}`, true, 'build');
           } 
           else if(upRes === 'hotel' && p.money >= hotelCost) { 
             let oldHotel = cell.hotels; let newHotel = oldHotel + 1;
@@ -4358,7 +4357,7 @@ async function updateMidGameSettings() {
             try{ playBuildSound(); }catch(e){}
             p.money -= hotelCost; cell.hotels = newHotel; 
             playVocalExpression('joy');
-            await speak(`Sukses pada peningkatan aset penambahan hotel ke ${newHotel} dari ${oldHotel} menjadi ${newHotel} milik ${p.name} dipetak ${cell.name}`, true, 'build');
+            await speak(`Sukses membangun hotel eksklusif milik ${p.name} di wilayah ${cell.name}`, true, 'build');
           }
         }
         else if (cell.owner !== p.id && !cell.mortgaged) {
