@@ -2563,22 +2563,20 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     }
   }
   function formatRupiahSpoken(ribuan){
-    // Untuk TTS: 240 -> 240 Juta rupiah, 1500 -> 1 Koma 5 Milyar rupiah
+    // Hapus tempelan kata "rupiah" dari sini agar tidak mendobel di TTS
     if(ribuan >= 1000){
       let milyar = ribuan / 1000;
       let milyarStr = milyar.toString();
       if(milyarStr.includes('.')){
         let parts = milyarStr.split('.');
         let koma = parts[1];
-        // Baca koma per digit: 5 -> Koma 5, 25 -> Koma 2 5? User minta 1 Koma 5 milyar
-        // Kita baca digit per digit dengan spasi
         let komaSpoken = koma.split('').join(' ');
-        return parts[0] + " Koma " + komaSpoken + " Milyar rupiah";
+        return parts[0] + " Koma " + komaSpoken + " Milyar";
       } else {
-        return milyarStr + " Milyar rupiah";
+        return milyarStr + " Milyar";
       }
     } else {
-      return ribuan + " Juta rupiah";
+      return ribuan + " Juta";
     }
   }
   function openSettings() { let m=document.getElementById('settingsModal'); if(m){ m.style.display='flex'; } initConfigUI(); initBGM(); }
@@ -2610,30 +2608,41 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
   }
 
   function convertRpToSpoken(text){
-    return text.replace(/(Rp\.?\s*)?(\d+(?:[\.,]\d+)?)\s*(Jt\.?|Juta|M\.?|Milyar|Miliar|rb|Triliun)?/gi, (match, rp, numStr, unitRaw) => {
+    // Regex diubah dengan (?:\s*rupiah)? di akhir.
+    // Jika ada kata "rupiah" yang tertinggal/tertulis, kata tersebut akan "ditelan" dan diganti dengan 1 kata "Rupiah" saja.
+    return text.replace(/(Rp\.?\s*)?(\d+(?:[\.,]\d+)?)\s*(Jt\.?|Juta|M\.?|Milyar|Miliar|rb|Triliun)?(?:\s*rupiah)?/gi, (match, rp, numStr, unitRaw) => {
       
-      // Jika TIDAK ADA awalan "Rp" dan TIDAK ADA akhiran "Juta/Milyar", berarti ini angka biasa.
-      // Kembalikan angka aslinya agar mesin TTS membacanya secara normal (tanpa embel-embel rupiah).
-      if (!rp && !unitRaw) {
+      let hasRupiah = match.toLowerCase().includes('rupiah');
+      
+      // Syarat Pengecualian: Jika tidak ada Rp, tidak ada satuan Juta/Milyar, dan tidak ada kata rupiah = Ini Angka Biasa.
+      if (!rp && !unitRaw && !hasRupiah) {
         return match; 
       }
 
       let unit = (unitRaw || "").toLowerCase();
-      let unitSpoken = unit.startsWith('t') ? "Triliun" : (unit.startsWith('m') ? "Milyar" : "Juta");
+      let unitSpoken = unit.startsWith('t') ? "Triliun" : (unit.startsWith('m') ? "Milyar" : (unit.startsWith('j') ? "Juta" : ""));
       let originalNum = numStr;
       
+      let intSpokenStr = "";
       if(originalNum.includes(',') || (originalNum.includes('.') && !/^\d{1,3}(\.\d{3})+$/.test(originalNum))){
         let parts = originalNum.replace('.', ',').split(',');
         let intPart = parts[0];
         let decPart = parts[1] || "";
         let intSpoken = angkaToKata(parseInt(intPart,10) || 0);
         let decSpoken = decPart.split('').map(d => angkaToKata(parseInt(d,10) || 0)).join(' ');
-        return intSpoken + " Koma " + decSpoken + " " + unitSpoken + " Rupiah";
+        intSpokenStr = intSpoken + " Koma " + decSpoken;
       } else {
         let n = parseInt(originalNum.replace(/\D/g,''),10);
         if(isNaN(n)) n = 0;
-        return angkaToKata(n) + " " + unitSpoken + " Rupiah";
+        intSpokenStr = angkaToKata(n);
       }
+      
+      // Rangkai hasil akhir: Angka + (Juta/Milyar) + Rupiah (hanya 1 kali)
+      let finalStr = intSpokenStr;
+      if (unitSpoken) finalStr += " " + unitSpoken;
+      finalStr += " Rupiah";
+      
+      return finalStr;
     });
   }
 
