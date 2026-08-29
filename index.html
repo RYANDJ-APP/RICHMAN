@@ -1854,22 +1854,31 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       
       let rents = [];
       rents.push({ label: 'Harga Beli Tanah', value: formatRupiah(basePrice) });
-      rents.push({ label: 'Sewa Dasar Tanah', value: formatRupiah(baseRent) });
-      rents.push({ label: 'Sewa Monopoli Kompleks', value: formatRupiah(monoRent) });
       
+      let isTransport = !cell.color && !cell.isUtility && !cell.special && cell.type !== 'corner';
+
       if(cell.color){
+        rents.push({ label: 'Sewa Dasar Tanah', value: formatRupiah(baseRent) });
+        rents.push({ label: 'Sewa Monopoli Kompleks', value: formatRupiah(monoRent) });
         for(let i=1;i<=4;i++) rents.push({ label: `Sewa ${i} Rumah 🏠`, value: formatRupiah(Math.round(baseRent + (0.25 * i * housePrice))) });
         let baseRent4House = baseRent + (0.25 * 4 * housePrice);
         for(let i=1;i<=4;i++) rents.push({ label: `Sewa ${i} Hotel 🏨`, value: formatRupiah(Math.round(baseRent4House + (0.25 * i * hotelPrice))) });
         rents.push({ label: 'Harga 1 Rumah', value: formatRupiah(housePrice) });
         rents.push({ label: 'Harga 1 Hotel', value: formatRupiah(hotelPrice) });
-      } else {
-        rents.push({ label: 'Sewa (Utilitas/Transport)', value: formatRupiah(baseRent) });
+      } else if (isTransport) {
+        rents.push({ label: 'Sewa 1 Stasiun/Bandara', value: formatRupiah(50) });
+        rents.push({ label: 'Sewa 2 Stasiun/Bandara', value: formatRupiah(100) });
+        rents.push({ label: 'Sewa 3 Stasiun/Bandara', value: formatRupiah(150) });
+        rents.push({ label: 'Sewa 4 Stasiun/Bandara', value: formatRupiah(200) });
+      } else if (cell.isUtility) {
+        rents.push({ label: 'Sewa 1 Utilitas', value: formatRupiah(baseRent) });
+        rents.push({ label: 'Sewa 2 Utilitas', value: formatRupiah(baseRent * 2) });
+        rents.push({ label: 'Sewa (+ Punya 1 Kompleks Apa Saja)', value: formatRupiah(baseRent * 5) });
+        rents.push({ label: 'Sewa (2 Utilitas + 1 Kompleks)', value: formatRupiah(baseRent * 10) });
       }
       
       let currentHouses = cell.houses || 0; let currentHotels = cell.hotels || 0;
       let mortgageVal = Math.floor(basePrice * 0.5 + 0.5 * currentHouses * housePrice + 0.5 * currentHotels * hotelPrice);
-      
       rents.push({ label: 'Harga Gadai/Jual', value: formatRupiah(mortgageVal) });
       
       body.innerHTML = rents.map(r=>`<tr><td style="background:#ecf0f1; font-weight:bold; width:55%; color:#2f3542; border-right:2px solid #bdc3c7;">${r.label}</td><td style="background:white; font-weight:900; color:#2f3542; text-align:right;">${r.value}</td></tr>`).join('');
@@ -2460,7 +2469,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     { title: "Buang Sampah Sembarangan", text: "Kena denda DLH karena buang sampah di sungai.", amount: -200, type: "sad", getOutCard: false },
     { title: "Pajak Motor Nunggak", text: "Bayar pajak motor nunggak 3 tahun plus denda.", amount: -250, type: "sad", getOutCard: false },
     { title: "Sengketa Tanah", text: "Kalah sengketa tanah warisan di BPN.", amount: -300, type: "sad", getOutCard: false },
-    { title: "Hajatan Tetangga", text: "Wajib kondangan hajatan tetangga 3 hari berturut-turut.", amount: -350, type: "sad", getOutCard: false },
+    { title: "Hajatan Tetangga", text: "Wajib kondangan hajatan tetangga 3 hari berturut-turut.", amount: -60, type: "sad", getOutCard: false },
     { title: "Mudik Lebaran", text: "Ongkos mudik Jakarta-Surabaya naik 2 Kali lipat.", amount: -400, type: "sad", getOutCard: false }
   ];
 
@@ -2492,14 +2501,14 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     { title: "Bebas Penjara - Dana Umum", text: "Dibantu LBH, bebas penjara! Kartu bebas.", amount: 0, type: "joy", getOutCard: true, deck: 'community' },
     { title: "Iuran Agustusan", text: "Iuran wajib lomba 17 Agustusan RT.", amount: -50, type: "sad", getOutCard: false },
     { title: "Sumbangan Masjid", text: "Sumbangan pembangunan masjid desa.", amount: -100, type: "sad", getOutCard: false },
-    { title: "Biaya Posyandu", text: "Iuran bulanan posyandu balita.", amount: -120, type: "sad", getOutCard: false },
-    { title: "Perbaikan Balai Desa", text: "Gotong royong perbaikan balai desa bocor.", amount: -150, type: "sad", getOutCard: false },
-    { title: "Bayar Listrik Naik", text: "Tarif listrik PLN 1300VA naik.", amount: -180, type: "sad", getOutCard: false },
+    { title: "Biaya Posyandu", text: "Iuran bulanan posyandu balita.", amount: -20, type: "sad", getOutCard: false },
+    { title: "Perbaikan Balai Desa", text: "Gotong royong perbaikan balai desa bocor.", amount: -50, type: "sad", getOutCard: false },
+    { title: "Bayar Listrik Naik", text: "Tarif listrik PLN 1300VA naik.", amount: -80, type: "sad", getOutCard: false },
     { title: "Sunatan Massal", text: "Biaya sunatan massal anak.", amount: -200, type: "sad", getOutCard: false },
-    { title: "Perbaikan Masjid", text: "Sumbangan perbaikan atap masjid bocor.", amount: -250, type: "sad", getOutCard: false },
-    { title: "Denda Gotong Royong", text: "Tidak ikut gotong royong, kena denda RT.", amount: -300, type: "sad", getOutCard: false },
-    { title: "Utang Warung", text: "Bayar utang warung Bu Haji yang numpuk.", amount: -350, type: "sad", getOutCard: false },
-    { title: "Kondangan Nikahan", text: "Kondangan nikahan tetangga 3 tempat sehari.", amount: -400, type: "sad", getOutCard: false }
+    { title: "Perbaikan Masjid", text: "Sumbangan perbaikan atap masjid bocor.", amount: -200, type: "sad", getOutCard: false },
+    { title: "Denda Gotong Royong", text: "Tidak ikut gotong royong, kena denda RT.", amount: -50, type: "sad", getOutCard: false },
+    { title: "Utang Warung", text: "Bayar utang warung Bu Haji yang numpuk.", amount: -35, type: "sad", getOutCard: false },
+    { title: "Kondangan Nikahan", text: "Kondangan nikahan tetangga 3 tempat sehari.", amount: -60, type: "sad", getOutCard: false }
   ];
 
   function formatRupiah(ribuan) {
@@ -2538,8 +2547,6 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
   function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
   function openAssetsModal() { document.getElementById('assetsModal').style.display = 'flex'; updateAssetsModalTable(); }
   function closeAssetsModal() { document.getElementById('assetsModal').style.display = 'none'; }
-  function showStatus(msg) { const el=document.getElementById('dbStatus'); if(el) el.innerText = msg; }
-  
   function angkaToKata(n){
     let kata = ["nol","satu","dua","tiga","empat","lima","enam","tujuh","delapan","sembilan","sepuluh","sebelas"];
     if(n < 12) return kata[n];
@@ -2547,7 +2554,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     if(n < 100){
       let pul = Math.floor(n/10);
       let sisa = n % 10;
-      return (pul === 1 ? "sepuluh" : kata[pul] + " puluh") + (sisa > 0 ? " " + kata[sisa] : "");
+      return kata[pul] + " puluh" + (sisa > 0 ? " " + kata[sisa] : "");
     }
     if(n < 1000){
       let rat = Math.floor(n/100);
@@ -2555,14 +2562,21 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       let ratKata = rat === 1 ? "seratus" : kata[rat] + " ratus";
       return ratKata + (sisa > 0 ? " " + angkaToKata(sisa) : "");
     }
+    if(n < 1000000){ 
+      let ribu = Math.floor(n/1000);
+      let sisa = n % 1000;
+      let ribuKata = ribu === 1 ? "seribu" : angkaToKata(ribu) + " ribu";
+      return ribuKata + (sisa > 0 ? " " + angkaToKata(sisa) : "");
+    }
     return n.toString();
   }
+
   function convertRpToSpoken(text){
-    return text.replace(/Rp\.?\s*(\d+(?:[\.,]\d+)?)\s*(Jt\.?|Juta|M\.?|Milyar|Miliar|rb)?/gi, (match, numStr, unitRaw) => {
+    return text.replace(/(?:Rp\.?\s*)?(\d+(?:[\.,]\d+)?)\s*(Jt\.?|Juta|M\.?|Milyar|Miliar|rb|Triliun)?/gi, (match, numStr, unitRaw) => {
       let unit = (unitRaw || "").toLowerCase();
-      let isMilyar = unit.startsWith('m');
-      let unitSpoken = isMilyar ? "Milyar" : "Juta";
+      let unitSpoken = unit.startsWith('t') ? "Triliun" : (unit.startsWith('m') ? "Milyar" : "Juta");
       let originalNum = numStr;
+      
       if(originalNum.includes(',') || (originalNum.includes('.') && !/^\d{1,3}(\.\d{3})+$/.test(originalNum))){
         let parts = originalNum.replace('.', ',').split(',');
         let intPart = parts[0];
@@ -2577,6 +2591,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       }
     });
   }
+
   function convertSlashToSpoken(text){
     let isDice = text.toLowerCase().includes('dadu') || text.includes('🎲');
     return text.replace(/(\d+)\s*\/\s*(\d+)/g, (match, a, b) => {
@@ -2586,6 +2601,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       return angkaToKata(numA) + connector + angkaToKata(numB);
     });
   }
+
   function speak(text, interrupt = false, category = 'general') {
     return new Promise((resolve) => {
       try {
@@ -2851,14 +2867,43 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
 
   function getHousePrice(cell) { return Math.round((cell.price * 0.2) * 1.5); }
   function getHotelPrice(cell) { return Math.round((cell.price * 0.2) * 2.5); }
+
+  function hasAnyMonopolyColorGroup(playerId) {
+    let colors = [...new Set(gameState.boardData.filter(c => c.color).map(c => c.color))];
+    for (let col of colors) {
+      let group = gameState.boardData.filter(c => c.color === col);
+      if (group.length > 0 && group.every(c => c.owner === playerId)) return true;
+    }
+    return false;
+  }
+
   function calculateRent(cell, ownerId) {
     if (!cell || cell.price <= 0 || cell.special) return 0;
     let baseRent = Math.round(cell.price * 0.2);
+    
+    // ATURAN BARU 1: Tarif Progresif Transportasi (Stasiun/Bandara dll)
+    let isTransport = !cell.color && !cell.isUtility && !cell.special && cell.type !== 'corner';
+    if (isTransport) {
+      let transportCount = gameState.boardData.filter(c => !c.color && !c.isUtility && !c.special && c.type !== 'corner' && c.owner === ownerId).length;
+      return transportCount * 50; // 50 Juta per petak yang dimiliki
+    }
+
+    // ATURAN BARU 3: Tarif Progresif Utilitas (PLN / PDAM) & Syarat Kompleks
+    if (cell.isUtility) {
+      let utilityCount = gameState.boardData.filter(c => c.isUtility && c.owner === ownerId).length;
+      let hasComplex = hasAnyMonopolyColorGroup(ownerId);
+
+      if (utilityCount === 2 && hasComplex) return baseRent * 10;
+      if (utilityCount === 1 && hasComplex) return baseRent * 5;
+      if (utilityCount === 2 && !hasComplex) return baseRent * 2;
+      return baseRent;
+    }
+
     let housePrice = getHousePrice(cell);
     let hotelPrice = getHotelPrice(cell);
     let rent = baseRent;
     let isMono = hasMonopolyGroup(ownerId, cell);
-    
+
     if (cell.hotels > 0) {
       let baseRent4House = baseRent + (0.25 * 4 * housePrice);
       rent = baseRent4House + (0.25 * cell.hotels * hotelPrice);
@@ -3023,9 +3068,19 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     let currentDebt = cp.bankLoan || 0;
     let netAssets = calculatePlayerTotalAssets(cp);
 
-    let loanButtons = [{text: "Tutup", type: "btn-blue", value: "close"}];
-    if(currentDebt > 0) { loanButtons.unshift({text: `Bayar Sebagian (${formatRupiah(Math.min(cp.money, currentDebt))})`, type: "btn-orange", value: "pay"}); }
-    if(currentDebt < maxLoan) { loanButtons.unshift({text: `Pinjam Limit Sisa (${formatRupiah(maxLoan - currentDebt)})`, type: "btn-green", value: "borrow"}); }
+    // ATURAN BARU 2: Tombol Pilihan Cicilan Bank 
+    let loanButtons = [];
+    if(currentDebt < maxLoan) { loanButtons.push({text: `Pinjam Sisa Limit (${formatRupiah(maxLoan - currentDebt)})`, type: "btn-green", value: "borrow"}); }
+    
+    if(currentDebt > 0) {
+        let cicil4 = Math.ceil(currentDebt / 4);
+        let cicil2 = Math.ceil(currentDebt / 2);
+        
+        if (cp.money >= cicil4 && cicil4 > 0) { loanButtons.push({text: `Cicil 25% / 4x (${formatRupiah(cicil4)})`, type: "btn-orange", value: `pay_${cicil4}`}); }
+        if (cp.money >= cicil2 && cicil2 > cicil4) { loanButtons.push({text: `Cicil 50% / 2x (${formatRupiah(cicil2)})`, type: "btn-orange", value: `pay_${cicil2}`}); }
+        if (cp.money >= currentDebt) { loanButtons.push({text: `Pelunasan 100% (${formatRupiah(currentDebt)})`, type: "btn-red", value: `pay_${currentDebt}`}); }
+    }
+    loanButtons.push({text: "Tutup", type: "btn-blue", value: "close"});
 
     let loanChoice = await showEventModal("Fasilitas Bank (Utang & Cicilan)", `Status Finansial ${cp.name}:\n\n- Kekayaan Bersih: ${formatRupiah(netAssets)}\n- Saldo Tunai: ${formatRupiah(cp.money)}\n- Utang Bank saat ini: ${formatRupiah(currentDebt)}\n- Sisa Limit Pinjaman: ${formatRupiah(maxLoan - currentDebt)}`, "🏦", loanButtons, "#8e44ad");
 
@@ -3035,9 +3090,8 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       triggerExpressionAndSpeak('joy', `${cp.name} berhasil mencairkan sisa limit pinjaman bank sebesar ${formatRupiah(borrowAmount)}.`);
       updateUI(); saveLocalState();
       await showEventModal("Pinjaman Dicairkan", `Dana pinjaman sebesar ${formatRupiah(borrowAmount)} telah dimasukkan ke saldo ${cp.name}.\nSaldo utang bank kini: ${formatRupiah(cp.bankLoan)}`, "💵", [{text: "Selesai", type: "btn-green"}]);
-    } else if (loanChoice === 'pay') {
-      let payAmount = Math.min(cp.money, currentDebt);
-      if(payAmount <= 0) { await showEventModalNoSpeak("Uang Tidak Cukup", "Saldo uang tunai Anda tidak cukup untuk membayar utang.", "❌", [{text:"OK", type:"btn-red"}]); return; }
+    } else if (loanChoice && loanChoice.startsWith('pay_')) {
+      let payAmount = parseInt(loanChoice.split('_')[1], 10);
       cp.money -= payAmount; cp.bankLoan -= payAmount;
       triggerExpressionAndSpeak('joy', `${cp.name} membayar cicilan utang bank sebesar ${formatRupiah(payAmount)}.`);
       updateUI(); saveLocalState();
@@ -4197,10 +4251,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
         else if (cell.owner !== p.id && !cell.mortgaged) {
           let owner = gameState.players.find(pl => pl.id === cell.owner); if(!owner) return;
           let rent = calculateRent(cell, owner.id); 
-          let isMono = hasMonopolyGroup(owner.id, cell);
-          let rentDesc = `Anda berhenti di properti milik ${owner.avatar} ${owner.name}.\nWilayah: ${cell.name}\nTarif Sewa Dasar: ${formatRupiah(baseRent)}`;
-          if(isMono && cell.houses === 0 && cell.hotels === 0) rentDesc += `\n[👑 Bonus Monopoli Kompleks/Utilitas: Sewa jadi 5 Kali Lipat!]`;
-          rentDesc += `\nTotal Tagihan Sewa: ${formatRupiah(rent)}`;
+          let rentDesc = `Anda berhenti di properti milik ${owner.avatar} ${owner.name}.\nWilayah: ${cell.name}\n\nTotal Tagihan Sewa: ${formatRupiah(rent)}`;
           playVocalExpression('sad');
           await showEventModal("Bayar Sewa Properti!", rentDesc, "🤝", [{text: "Bayar ke " + owner.name, type: "btn-blue", value: "p"}], "#e84393", cell.img, 'payment');
           p.money -= rent; owner.money += rent;
