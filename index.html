@@ -2851,6 +2851,24 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
 
   function getHousePrice(cell) { return Math.round((cell.price * 0.2) * 1.5); }
   function getHotelPrice(cell) { return Math.round((cell.price * 0.2) * 2.5); }
+  function calculateRent(cell, ownerId) {
+    if (!cell || cell.price <= 0 || cell.special) return 0;
+    let baseRent = Math.round(cell.price * 0.2);
+    let housePrice = getHousePrice(cell);
+    let hotelPrice = getHotelPrice(cell);
+    let rent = baseRent;
+    let isMono = hasMonopolyGroup(ownerId, cell);
+    
+    if (cell.hotels > 0) {
+      let baseRent4House = baseRent + (0.25 * 4 * housePrice);
+      rent = baseRent4House + (0.25 * cell.hotels * hotelPrice);
+    } else if (cell.houses > 0) {
+      rent = baseRent + (0.25 * cell.houses * housePrice);
+    } else if (isMono) {
+      rent = baseRent * 5;
+    }
+    return Math.round(rent);
+  }
 
   function hasMonopolyGroup(playerId, cell) {
     if (cell.isUtility) { let utilities = gameState.boardData.filter(c => c.isUtility); return utilities.length>0 && utilities.every(u => u.owner === playerId); }
@@ -3570,11 +3588,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
         let ahead = (bot.pos + i) % 40;
         let c = gameState.boardData[ahead];
         if(c && c.owner !== null && c.owner !== bot.id && !c.mortgaged && c.price>0){
-          let base = Math.round(c.price*0.2);
-          let rent = base;
-          if(c.hotels>0) rent = base*(1+0.35*c.hotels);
-          else if(c.houses>0) rent = base*(1+0.25*c.houses);
-          else if(hasMonopolyGroup(c.owner, c)) rent = base*5;
+          let rent = calculateRent(c, c.owner);
           dangerousRent += rent;
         }
       }
@@ -3928,11 +3942,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
         // Bayar sewa - sama seperti manusia
         let owner = gameState.players.find(pl => pl.id === cell.owner); if(!owner) return;
         let baseRent = cell.price > 0 ? Math.round(cell.price * 0.2) : 0;
-        let rent = baseRent; let isMono = hasMonopolyGroup(owner.id, cell);
-        if(cell.hotels > 0) rent = baseRent * (1 + 0.35 * cell.hotels);
-        else if(cell.houses > 0) rent = baseRent * (1 + 0.25 * cell.houses);
-        else if(isMono) rent = baseRent * 5;
-        rent = Math.round(rent);
+        let rent = calculateRent(cell, owner.id);
         playVocalExpression('sad');
         await showEventModal("Bayar Sewa! - Bot", `${bot.name} bayar sewa ${formatRupiah(rent)} ke ${owner.name} untuk ${cell.name}`, "🤝", [{text: "Bayar", type: "btn-blue"}], "#e84393", cell.img, 'payment');
         bot.money -= rent; owner.money += rent;
@@ -4186,11 +4196,8 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
         }
         else if (cell.owner !== p.id && !cell.mortgaged) {
           let owner = gameState.players.find(pl => pl.id === cell.owner); if(!owner) return;
-          let rent = baseRent; let isMono = hasMonopolyGroup(owner.id, cell);
-          if(cell.hotels > 0) rent = baseRent * (1 + 0.35 * cell.hotels);
-          else if(cell.houses > 0) rent = baseRent * (1 + 0.25 * cell.houses);
-          else if(isMono) rent = baseRent * 5;
-          rent = Math.round(rent);
+          let rent = calculateRent(cell, owner.id); 
+          let isMono = hasMonopolyGroup(owner.id, cell);
           let rentDesc = `Anda berhenti di properti milik ${owner.avatar} ${owner.name}.\nWilayah: ${cell.name}\nTarif Sewa Dasar: ${formatRupiah(baseRent)}`;
           if(isMono && cell.houses === 0 && cell.hotels === 0) rentDesc += `\n[👑 Bonus Monopoli Kompleks/Utilitas: Sewa jadi 5 Kali Lipat!]`;
           rentDesc += `\nTotal Tagihan Sewa: ${formatRupiah(rent)}`;
