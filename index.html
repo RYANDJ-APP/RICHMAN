@@ -3101,7 +3101,19 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
         
         ownedCells.forEach((c) => {
           let cellIdx = gameState.boardData.findIndex(item => item.name === c.name);
-          let levelStr = c.mortgaged ? 'Digadai ⚠️' : (c.hotels > 0 ? `${c.hotels} Hotel` : (c.houses > 0 ? `${c.houses} Rumah` : 'Tanah'));
+          
+          let levelStr = '';
+          if (c.mortgaged) {
+            let roundsPassed = p.startCount - (c.mortgageRound || 0);
+            levelStr = `<span style="color:#d63031">Digadai ⚠️ (${roundsPassed}/10)</span>`;
+          } else if (c.hotels > 0) {
+            levelStr = `${c.hotels} Hotel`;
+          } else if (c.houses > 0) {
+            levelStr = `${c.houses} Rumah`;
+          } else {
+            levelStr = 'Tanah';
+          }
+
           let actionBtn = c.mortgaged 
             ? `<button class="btn-action-sm bg-mortgage" onclick="toggleMortgage(${cellIdx})">Tebus</button>`
             : `<button class="btn-action-sm bg-mortgage" onclick="toggleMortgage(${cellIdx})">Gadai</button>`;
@@ -3167,8 +3179,9 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
           if(owner) {
             ownerName = `${owner.avatar} ${owner.name}`;
             if(cell.mortgaged) { 
-              levelDesc = 'Gadai ⚠️'; 
-              if(badge){ badge.style.background = '#e67e22'; badge.innerHTML = `${owner.avatar} 📄 (Gadai)`; } 
+              let roundsPassed = owner.startCount - (cell.mortgageRound || 0);
+              levelDesc = `<span style="color:#d63031; font-weight:bold;">Gadai ⚠️ (${roundsPassed}/10 putaran)</span>`; 
+              if(badge){ badge.style.background = '#e67e22'; badge.innerHTML = `${owner.avatar} 📄 (${roundsPassed}/10)`; } 
             } else {
               if(cell.hotels > 0) { 
                 levelDesc = `Hotel 🏨 (${cell.hotels})`; 
@@ -3188,9 +3201,10 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
               let houseP = getHousePrice(cell); let hotelP = getHotelPrice(cell);
               let mortgageVal = Math.floor(cell.price * 0.5) + (0.5 * cell.houses * houseP) + (0.5 * cell.hotels * hotelP);
               let redeemCost = Math.floor(mortgageVal * 1.1);
-              mortgageBody.innerHTML += `<tr><td><strong>${cell.name}</strong></td><td>${ownerName}</td><td>Digadai ⚠️</td><td>${formatRupiah(redeemCost)}</td></tr>`;
+              let roundsPassed = owner.startCount - (cell.mortgageRound || 0);
+              mortgageBody.innerHTML += `<tr><td><strong>${cell.name}</strong></td><td>${ownerName}</td><td><span style="color:#d63031">Digadai ⚠️ (${roundsPassed}/10)</span></td><td>${formatRupiah(redeemCost)}</td></tr>`;
               hasMortgagedAny = true;
-            } 
+            }
             else { 
               actionBtns = `<button class="btn-action-sm bg-mortgage" onclick="toggleMortgage(${i})">Gadai Paket</button> <button class="btn-action-sm bg-sell" onclick="sellAssetPackage(${i})">Jual Paket</button>`; 
             }
