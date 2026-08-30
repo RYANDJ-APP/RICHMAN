@@ -1331,13 +1331,7 @@ html, body {
           <div class="form-group">
             <label>Jumlah Pemain Manusia</label>
             <select id="cfgPlayerCount" onchange="updatePlayerVisibility()">
-              <option value="0">0 (Hanya Komputer / Auto-Play)</option>
-              <option value="1">1 Pemain</option>
-              <option value="2" selected>2 Pemain</option>
-              <option value="3">3 Pemain</option>
-              <option value="4">4 Pemain</option>
-              <option value="5">5 Pemain</option>
-              <option value="6">6 Pemain</option>
+              <option value="1">1 Pemain</option><option value="2" selected>2 Pemain</option><option value="3">3 Pemain</option><option value="4">4 Pemain</option><option value="5">5 Pemain</option><option value="6">6 Pemain</option>
             </select>
           </div>
           <div class="form-group" style="margin-top: 15px; border-top: 1px solid #ccc; padding-top: 15px;">
@@ -1350,9 +1344,6 @@ html, body {
                   <option value="1">1 Komputer</option>
                   <option value="2">2 Komputer</option>
                   <option value="3">3 Komputer</option>
-                  <option value="4">4 Komputer</option>
-                  <option value="5">5 Komputer</option>
-                  <option value="6">6 Komputer</option>
                 </select>
               </div>
               <div style="flex:1;">
@@ -1371,12 +1362,9 @@ html, body {
 
         <div class="sidebar-section">
           <div class="btn-group" style="margin-top:5px;">
-            <button class="btn-base btn-save" onclick="startNewGame()">🚀 Mulai Baru (Reset)</button>
-            <button class="btn-base" style="background:#f39c12;" onclick="updateMidGameSettings()">✏️ Update Sesi Saat Ini (Tanpa Reset)</button>
-          </div>
-          <div class="btn-group" style="margin-top: 10px;">
-            <button class="btn-base" style="background:#6c5ce7;" onclick="openSessionModal()">💾 Manajemen Sesi</button>
-            <button class="btn-base btn-load" onclick="loadLocalState()">📂 Muat Ulang (Lokal)</button>
+            <button class="btn-base btn-save" onclick="startNewGame()">🚀 Mulai Baru</button>
+            <button class="btn-base" style="background:#6c5ce7;" onclick="openSessionModal()">💾 Sesi Saya</button>
+            <button class="btn-base btn-load" onclick="loadLocalState()">📂 Lanjut (Lokal)</button>
           </div>
           <div class="btn-group" style="margin-top: 10px;">
             <button class="btn-base btn-cloud" onclick="saveToCloud()">☁️ Simpan (Sheet)</button>
@@ -1859,38 +1847,29 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       header.innerHTML = `${cell.name}<br><small style="font-size:12px; opacity:0.9;">${cell.color ? 'Kompleks: '+cell.color : cell.isUtility ? 'Utilitas' : 'Transportasi'}</small>`;
       
       let basePrice = cell.price;
-      let baseRent = getBaseRent(cell); // MENGGUNAKAN STANDAR BARU
+      let baseRent = Math.round(basePrice * 0.2);
       let monoRent = Math.round(baseRent * 5);
       let housePrice = getHousePrice(cell);
       let hotelPrice = getHotelPrice(cell);
       
       let rents = [];
       rents.push({ label: 'Harga Beli Tanah', value: formatRupiah(basePrice) });
+      rents.push({ label: 'Sewa Dasar Tanah', value: formatRupiah(baseRent) });
+      rents.push({ label: 'Sewa Monopoli Kompleks', value: formatRupiah(monoRent) });
       
-      let isTransport = !cell.color && !cell.isUtility && !cell.special && cell.type !== 'corner';
-
       if(cell.color){
-        rents.push({ label: 'Sewa Dasar Tanah', value: formatRupiah(baseRent) });
-        rents.push({ label: 'Sewa Monopoli Kompleks', value: formatRupiah(monoRent) });
-        for(let i=1;i<=4;i++) rents.push({ label: `Sewa ${i} Rumah 🏠`, value: formatRupiah(Math.round(baseRent + (0.25 * i * housePrice))) });
-        let baseRent4House = baseRent + (0.25 * 4 * housePrice);
-        for(let i=1;i<=4;i++) rents.push({ label: `Sewa ${i} Hotel 🏨`, value: formatRupiah(Math.round(baseRent4House + (0.25 * i * hotelPrice))) });
+        for(let i=1;i<=4;i++) rents.push({ label: `Sewa ${i} Rumah 🏠`, value: formatRupiah(Math.round(monoRent + (i * housePrice))) });
+        let rent4House = monoRent + (4 * housePrice);
+        for(let i=1;i<=4;i++) rents.push({ label: `Sewa ${i} Hotel 🏨`, value: formatRupiah(Math.round(rent4House + (i * hotelPrice))) });
         rents.push({ label: 'Harga 1 Rumah', value: formatRupiah(housePrice) });
         rents.push({ label: 'Harga 1 Hotel', value: formatRupiah(hotelPrice) });
-      } else if (isTransport) {
-        rents.push({ label: 'Sewa 1 Stasiun/Bandara', value: formatRupiah(50) });
-        rents.push({ label: 'Sewa 2 Stasiun/Bandara', value: formatRupiah(100) });
-        rents.push({ label: 'Sewa 3 Stasiun/Bandara', value: formatRupiah(150) });
-        rents.push({ label: 'Sewa 4 Stasiun/Bandara', value: formatRupiah(200) });
-      } else if (cell.isUtility) {
-        rents.push({ label: 'Sewa 1 Utilitas', value: formatRupiah(baseRent) });
-        rents.push({ label: 'Sewa 2 Utilitas', value: formatRupiah(baseRent * 2) });
-        rents.push({ label: 'Sewa (+ Punya 1 Kompleks Apa Saja)', value: formatRupiah(baseRent * 5) });
-        rents.push({ label: 'Sewa (2 Utilitas + 1 Kompleks)', value: formatRupiah(baseRent * 10) });
+      } else {
+        rents.push({ label: 'Sewa (Utilitas/Transport)', value: formatRupiah(baseRent) });
       }
       
       let currentHouses = cell.houses || 0; let currentHotels = cell.hotels || 0;
       let mortgageVal = Math.floor(basePrice * 0.5 + 0.5 * currentHouses * housePrice + 0.5 * currentHotels * hotelPrice);
+      
       rents.push({ label: 'Harga Gadai/Jual', value: formatRupiah(mortgageVal) });
       
       body.innerHTML = rents.map(r=>`<tr><td style="background:#ecf0f1; font-weight:bold; width:55%; color:#2f3542; border-right:2px solid #bdc3c7;">${r.label}</td><td style="background:white; font-weight:900; color:#2f3542; text-align:right;">${r.value}</td></tr>`).join('');
@@ -2284,44 +2263,6 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     }
   }, 1000);
 
-// === SHORTCUT KEYBOARD ===
-  document.addEventListener('keydown', function(e) {
-    // Jangan aktifkan shortcut jika pemain sedang mengetik nama / mengisi form
-    if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
-    
-    let key = e.key.toLowerCase();
-    
-    // R atau SPACE = Lempar Dadu
-    if(key === 'r' || e.code === 'Space') {
-      let btn = document.getElementById('rollBtn');
-      if(btn && !btn.disabled && !isHoldingDice && btn.style.display !== 'none') {
-        e.preventDefault();
-        startHoldDice();
-        setTimeout(releaseHoldDice, 150);
-      }
-    }
-    // I atau A = Info Aset
-    else if(key === 'i' || key === 'a') {
-      e.preventDefault(); openAssetsModal();
-    }
-    // F = Fullscreen
-    else if(key === 'f') {
-      e.preventDefault(); toggleFullscreenManual();
-    }
-    // + atau = -> Zoom In
-    else if(key === '+' || key === '=') {
-      zoomBoard(0.1);
-    }
-    // - atau _ -> Zoom Out
-    else if(key === '-' || key === '_') {
-      zoomBoard(-0.1);
-    }
-    // P atau C = Control Panel Settings
-    else if(key === 'p' || key === 'c') {
-      e.preventDefault(); openSettings();
-    }
-  });
-
   // Prevent text selection via CSS tambahan
   let antiCopyStyle = document.createElement('style');
   antiCopyStyle.innerHTML = `
@@ -2519,7 +2460,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     { title: "Buang Sampah Sembarangan", text: "Kena denda DLH karena buang sampah di sungai.", amount: -200, type: "sad", getOutCard: false },
     { title: "Pajak Motor Nunggak", text: "Bayar pajak motor nunggak 3 tahun plus denda.", amount: -250, type: "sad", getOutCard: false },
     { title: "Sengketa Tanah", text: "Kalah sengketa tanah warisan di BPN.", amount: -300, type: "sad", getOutCard: false },
-    { title: "Hajatan Tetangga", text: "Wajib kondangan hajatan tetangga 3 hari berturut-turut.", amount: -60, type: "sad", getOutCard: false },
+    { title: "Hajatan Tetangga", text: "Wajib kondangan hajatan tetangga 3 hari berturut-turut.", amount: -350, type: "sad", getOutCard: false },
     { title: "Mudik Lebaran", text: "Ongkos mudik Jakarta-Surabaya naik 2 Kali lipat.", amount: -400, type: "sad", getOutCard: false }
   ];
 
@@ -2551,14 +2492,14 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     { title: "Bebas Penjara - Dana Umum", text: "Dibantu LBH, bebas penjara! Kartu bebas.", amount: 0, type: "joy", getOutCard: true, deck: 'community' },
     { title: "Iuran Agustusan", text: "Iuran wajib lomba 17 Agustusan RT.", amount: -50, type: "sad", getOutCard: false },
     { title: "Sumbangan Masjid", text: "Sumbangan pembangunan masjid desa.", amount: -100, type: "sad", getOutCard: false },
-    { title: "Biaya Posyandu", text: "Iuran bulanan posyandu balita.", amount: -20, type: "sad", getOutCard: false },
-    { title: "Perbaikan Balai Desa", text: "Gotong royong perbaikan balai desa bocor.", amount: -50, type: "sad", getOutCard: false },
-    { title: "Bayar Listrik Naik", text: "Tarif listrik PLN 1300VA naik.", amount: -80, type: "sad", getOutCard: false },
+    { title: "Biaya Posyandu", text: "Iuran bulanan posyandu balita.", amount: -120, type: "sad", getOutCard: false },
+    { title: "Perbaikan Balai Desa", text: "Gotong royong perbaikan balai desa bocor.", amount: -150, type: "sad", getOutCard: false },
+    { title: "Bayar Listrik Naik", text: "Tarif listrik PLN 1300VA naik.", amount: -180, type: "sad", getOutCard: false },
     { title: "Sunatan Massal", text: "Biaya sunatan massal anak.", amount: -200, type: "sad", getOutCard: false },
-    { title: "Perbaikan Masjid", text: "Sumbangan perbaikan atap masjid bocor.", amount: -200, type: "sad", getOutCard: false },
-    { title: "Denda Gotong Royong", text: "Tidak ikut gotong royong, kena denda RT.", amount: -50, type: "sad", getOutCard: false },
-    { title: "Utang Warung", text: "Bayar utang warung Bu Haji yang numpuk.", amount: -35, type: "sad", getOutCard: false },
-    { title: "Kondangan Nikahan", text: "Kondangan nikahan tetangga 3 tempat sehari.", amount: -60, type: "sad", getOutCard: false }
+    { title: "Perbaikan Masjid", text: "Sumbangan perbaikan atap masjid bocor.", amount: -250, type: "sad", getOutCard: false },
+    { title: "Denda Gotong Royong", text: "Tidak ikut gotong royong, kena denda RT.", amount: -300, type: "sad", getOutCard: false },
+    { title: "Utang Warung", text: "Bayar utang warung Bu Haji yang numpuk.", amount: -350, type: "sad", getOutCard: false },
+    { title: "Kondangan Nikahan", text: "Kondangan nikahan tetangga 3 tempat sehari.", amount: -400, type: "sad", getOutCard: false }
   ];
 
   function formatRupiah(ribuan) {
@@ -2575,26 +2516,30 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     }
   }
   function formatRupiahSpoken(ribuan){
-    // Hapus tempelan kata "rupiah" dari sini agar tidak mendobel di TTS
+    // Untuk TTS: 240 -> 240 Juta rupiah, 1500 -> 1 Koma 5 Milyar rupiah
     if(ribuan >= 1000){
       let milyar = ribuan / 1000;
       let milyarStr = milyar.toString();
       if(milyarStr.includes('.')){
         let parts = milyarStr.split('.');
         let koma = parts[1];
+        // Baca koma per digit: 5 -> Koma 5, 25 -> Koma 2 5? User minta 1 Koma 5 milyar
+        // Kita baca digit per digit dengan spasi
         let komaSpoken = koma.split('').join(' ');
-        return parts[0] + " Koma " + komaSpoken + " Milyar";
+        return parts[0] + " Koma " + komaSpoken + " Milyar rupiah";
       } else {
-        return milyarStr + " Milyar";
+        return milyarStr + " Milyar rupiah";
       }
     } else {
-      return ribuan + " Juta";
+      return ribuan + " Juta rupiah";
     }
   }
   function openSettings() { let m=document.getElementById('settingsModal'); if(m){ m.style.display='flex'; } initConfigUI(); initBGM(); }
   function closeSettings() { document.getElementById('settingsModal').style.display = 'none'; }
   function openAssetsModal() { document.getElementById('assetsModal').style.display = 'flex'; updateAssetsModalTable(); }
   function closeAssetsModal() { document.getElementById('assetsModal').style.display = 'none'; }
+  function showStatus(msg) { const el=document.getElementById('dbStatus'); if(el) el.innerText = msg; }
+  
   function angkaToKata(n){
     let kata = ["nol","satu","dua","tiga","empat","lima","enam","tujuh","delapan","sembilan","sepuluh","sebelas"];
     if(n < 12) return kata[n];
@@ -2602,7 +2547,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     if(n < 100){
       let pul = Math.floor(n/10);
       let sisa = n % 10;
-      return kata[pul] + " puluh" + (sisa > 0 ? " " + kata[sisa] : "");
+      return (pul === 1 ? "sepuluh" : kata[pul] + " puluh") + (sisa > 0 ? " " + kata[sisa] : "");
     }
     if(n < 1000){
       let rat = Math.floor(n/100);
@@ -2610,53 +2555,28 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       let ratKata = rat === 1 ? "seratus" : kata[rat] + " ratus";
       return ratKata + (sisa > 0 ? " " + angkaToKata(sisa) : "");
     }
-    if(n < 1000000){ 
-      let ribu = Math.floor(n/1000);
-      let sisa = n % 1000;
-      let ribuKata = ribu === 1 ? "seribu" : angkaToKata(ribu) + " ribu";
-      return ribuKata + (sisa > 0 ? " " + angkaToKata(sisa) : "");
-    }
     return n.toString();
   }
-
   function convertRpToSpoken(text){
-    // Regex diperbarui: Singkatan seperti "M" dihapus agar tidak salah tangkap dengan kata "menjadi", "milik", atau "maju"
-    return text.replace(/(Rp\.?\s*)?(\d+(?:[\.,]\d+)?)\s*(Juta|Milyar|Miliar|Triliun)?(?:\s*rupiah)?/gi, (match, rp, numStr, unitRaw) => {
-      
-      let hasRupiah = match.toLowerCase().includes('rupiah');
-      
-      // Syarat Pengecualian: Jika tidak ada Rp, tidak ada Juta/Milyar, dan tidak ada rupiah = Angka Biasa.
-      if (!rp && !unitRaw && !hasRupiah) {
-        return match; 
-      }
-
+    return text.replace(/Rp\.?\s*(\d+(?:[\.,]\d+)?)\s*(Jt\.?|Juta|M\.?|Milyar|Miliar|rb)?/gi, (match, numStr, unitRaw) => {
       let unit = (unitRaw || "").toLowerCase();
-      let unitSpoken = unit.startsWith('t') ? "Triliun" : (unit.startsWith('m') ? "Milyar" : (unit.startsWith('j') ? "Juta" : ""));
+      let isMilyar = unit.startsWith('m');
+      let unitSpoken = isMilyar ? "Milyar" : "Juta";
       let originalNum = numStr;
-      
-      let intSpokenStr = "";
       if(originalNum.includes(',') || (originalNum.includes('.') && !/^\d{1,3}(\.\d{3})+$/.test(originalNum))){
         let parts = originalNum.replace('.', ',').split(',');
         let intPart = parts[0];
         let decPart = parts[1] || "";
         let intSpoken = angkaToKata(parseInt(intPart,10) || 0);
         let decSpoken = decPart.split('').map(d => angkaToKata(parseInt(d,10) || 0)).join(' ');
-        intSpokenStr = intSpoken + " Koma " + decSpoken;
+        return intSpoken + " Koma " + decSpoken + " " + unitSpoken + " Rupiah";
       } else {
         let n = parseInt(originalNum.replace(/\D/g,''),10);
         if(isNaN(n)) n = 0;
-        intSpokenStr = angkaToKata(n);
+        return angkaToKata(n) + " " + unitSpoken + " Rupiah";
       }
-      
-      // Rangkai hasil akhir: Angka + (Juta/Milyar) + Rupiah
-      let finalStr = intSpokenStr;
-      if (unitSpoken) finalStr += " " + unitSpoken;
-      finalStr += " Rupiah";
-      
-      return finalStr;
     });
   }
-
   function convertSlashToSpoken(text){
     let isDice = text.toLowerCase().includes('dadu') || text.includes('🎲');
     return text.replace(/(\d+)\s*\/\s*(\d+)/g, (match, a, b) => {
@@ -2666,10 +2586,10 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       return angkaToKata(numA) + connector + angkaToKata(numB);
     });
   }
-
   function speak(text, interrupt = false, category = 'general') {
     return new Promise((resolve) => {
       try {
+        // FIX: ubah pembacaan Rp 200 Juta jadi 200 Juta Rupiah, dan 1/4 jadi satu dari empat
         let spokenText = convertRpToSpoken(text);
         spokenText = convertSlashToSpoken(spokenText);
         let voiceCheckbox = document.getElementById('cfgVoice');
@@ -2703,21 +2623,13 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
         utterance.onend = () => {
           let rollBtn = document.getElementById('rollBtn');
           let cp = gameState.players[gameState.turnIndex];
-          if(rollBtn && cp && !cp.isBot) { 
-             rollBtn.disabled = false; 
-             rollBtn.classList.add('turn-highlight'); 
-             rollBtn.focus(); // AUTO-FOCUS AGAR BISA ENTER
-          }
+          if(rollBtn && cp && !cp.isBot) { rollBtn.disabled = false; rollBtn.classList.add('turn-highlight'); }
           resolve();
         };
         utterance.onerror = () => {
           let rollBtn = document.getElementById('rollBtn');
           let cp = gameState.players[gameState.turnIndex];
-          if(rollBtn && cp && !cp.isBot) { 
-             rollBtn.disabled = false; 
-             rollBtn.classList.add('turn-highlight'); 
-             rollBtn.focus(); // AUTO-FOCUS AGAR BISA ENTER
-          }
+          if(rollBtn && cp && !cp.isBot) { rollBtn.disabled = false; rollBtn.classList.add('turn-highlight'); }
           resolve();
         };
 
@@ -2727,22 +2639,9 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
   }
 
   function updatePlayerVisibility() {
-    let hc = parseInt(document.getElementById('cfgPlayerCount').value);
-    let humanCount = isNaN(hc) ? 2 : hc;
-    let bc = parseInt(document.getElementById('cfgBotCount').value);
-    let botCount = isNaN(bc) ? 0 : bc;
-    
+    let humanCount = parseInt(document.getElementById('cfgPlayerCount').value) || 2;
+    let botCount = parseInt(document.getElementById('cfgBotCount').value) || 0;
     let total = humanCount + botCount;
-    
-    // Paksa minimal ada 2 pemain di arena
-    if (total < 2 && humanCount === 0) {
-       botCount = 2; total = 2;
-       document.getElementById('cfgBotCount').value = "2";
-    } else if (total < 2 && humanCount === 1) {
-       botCount = 1; total = 2;
-       document.getElementById('cfgBotCount').value = "1";
-    }
-    
     if (total > 6) total = 6;
     
     for(let i=1; i<=6; i++){
@@ -2752,18 +2651,8 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
           row.style.display = 'grid';
           let isBot = i > humanCount;
           let nameInput = document.getElementById(`pName${i}`);
-          let typeSelect = document.getElementById(`pType${i}`);
-          
-          if(isBot && nameInput && !nameInput.value.startsWith('Bot ')) { 
-              nameInput.value = `Bot ${i - humanCount} 🤖`; 
-          }
-          if(typeSelect) {
-              typeSelect.value = isBot ? "bot" : "human";
-              typeSelect.disabled = true; // Kunci agar user paham ini sistem otomatis
-          }
-        } else { 
-          row.style.display = 'none'; 
-        }
+          if(isBot && nameInput && !nameInput.value.startsWith('Bot ')) { nameInput.value = `Bot ${i - humanCount} 🤖`; }
+        } else { row.style.display = 'none'; }
       }
     }
   }
@@ -2806,16 +2695,10 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
 
   function readSettingsForm() {
     try {
-      let hc = parseInt(document.getElementById('cfgPlayerCount').value);
-      let humanCount = isNaN(hc) ? 2 : hc;
-      let bc = parseInt(document.getElementById('cfgBotCount').value);
-      let botCount = isNaN(bc) ? 0 : bc;
+      let humanCount = parseInt(document.getElementById('cfgPlayerCount').value) || 2;
+      let botCount = parseInt(document.getElementById('cfgBotCount').value) || 0;
       let botLevel = document.getElementById('cfgBotLevel').value || 'normal';
-      
       let totalPlayers = humanCount + botCount;
-      if(totalPlayers > 6) totalPlayers = 6;
-      if(totalPlayers < 2) totalPlayers = 2;
-      
       let modalAwal = parseInt(document.getElementById('cfgModal').value) || 1500;
       let players = [];
       
@@ -2836,42 +2719,6 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       }
       gameState.players = players;
     } catch(e){ logError(e); }
-  }
-
-  async function updateMidGameSettings() {
-    if(gameState.players.length === 0) {
-      await showEventModalNoSpeak("Gagal Update", "Tidak ada permainan yang sedang berjalan. Klik Mulai Baru terlebih dahulu.", "❌", [{text:"OK", type:"btn-red"}]);
-      return;
-    }
-    
-    let hc = parseInt(document.getElementById('cfgPlayerCount').value);
-    let humanCount = isNaN(hc) ? 2 : hc;
-    let botLevel = document.getElementById('cfgBotLevel').value || 'normal';
-    
-    for(let i=0; i < gameState.players.length; i++) {
-      let formIdx = i + 1;
-      let nameInput = document.getElementById(`pName${formIdx}`);
-      let avSelect = document.getElementById(`pAvatar${formIdx}`);
-      
-      if(nameInput && avSelect) {
-        gameState.players[i].name = nameInput.value;
-        let opt = avSelect.options[avSelect.selectedIndex];
-        gameState.players[i].avatar = opt.value;
-        
-        let avId = opt.getAttribute('data-id');
-        let matched = avatars.find(a => a.id === avId) || avatars[0];
-        gameState.players[i].pitch = matched.pitch;
-        
-        let isBot = formIdx > humanCount;
-        gameState.players[i].isBot = isBot;
-        if(isBot) gameState.players[i].botLevel = botLevel;
-      }
-    }
-    
-    updateUI(); 
-    saveLocalState();
-    await showEventModalNoSpeak("Update Berhasil", "Nama, Avatar, Tipe (Manusia/Bot), dan Level Kecerdasan berhasil diperbarui di tengah permainan!", "✅", [{text:"OK", type:"btn-green"}]);
-    closeSettings();
   }
 
   async function startNewGame() {
@@ -3004,61 +2851,6 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
 
   function getHousePrice(cell) { return Math.round((cell.price * 0.2) * 1.5); }
   function getHotelPrice(cell) { return Math.round((cell.price * 0.2) * 2.5); }
-
-  // FUNGSI BARU: Standarisasi Harga Sewa Dasar
-  function getBaseRent(cell) {
-    if (!cell || cell.price <= 0 || cell.special) return 0;
-    let isTransport = !cell.color && !cell.isUtility && !cell.special && cell.type !== 'corner';
-    if (isTransport) return 50; // Paksa sewa dasar transport jadi 50 Juta
-    return Math.round(cell.price * 0.2); // Properti biasa tetap 20%
-  }
-
-  function hasAnyMonopolyColorGroup(playerId) {
-    let colors = [...new Set(gameState.boardData.filter(c => c.color).map(c => c.color))];
-    for (let col of colors) {
-      let group = gameState.boardData.filter(c => c.color === col);
-      if (group.length > 0 && group.every(c => c.owner === playerId)) return true;
-    }
-    return false;
-  }
-
-  function calculateRent(cell, ownerId) {
-    if (!cell || cell.price <= 0 || cell.special) return 0;
-    let baseRent = getBaseRent(cell);
-    
-    // ATURAN BARU 1: Tarif Progresif Transportasi (Stasiun/Bandara dll)
-    let isTransport = !cell.color && !cell.isUtility && !cell.special && cell.type !== 'corner';
-    if (isTransport) {
-      let transportCount = gameState.boardData.filter(c => !c.color && !c.isUtility && !c.special && c.type !== 'corner' && c.owner === ownerId).length;
-      return transportCount * 50; // 50 Juta per petak yang dimiliki
-    }
-
-    // ATURAN BARU 3: Tarif Progresif Utilitas (PLN / PDAM) & Syarat Kompleks
-    if (cell.isUtility) {
-      let utilityCount = gameState.boardData.filter(c => c.isUtility && c.owner === ownerId).length;
-      let hasComplex = hasAnyMonopolyColorGroup(ownerId);
-
-      if (utilityCount === 2 && hasComplex) return baseRent * 10;
-      if (utilityCount === 1 && hasComplex) return baseRent * 5;
-      if (utilityCount === 2 && !hasComplex) return baseRent * 2;
-      return baseRent;
-    }
-
-    let housePrice = getHousePrice(cell);
-    let hotelPrice = getHotelPrice(cell);
-    let rent = baseRent;
-    let isMono = hasMonopolyGroup(ownerId, cell);
-
-    if (cell.hotels > 0) {
-      let baseRent4House = baseRent + (0.25 * 4 * housePrice);
-      rent = baseRent4House + (0.25 * cell.hotels * hotelPrice);
-    } else if (cell.houses > 0) {
-      rent = baseRent + (0.25 * cell.houses * housePrice);
-    } else if (isMono) {
-      rent = baseRent * 5;
-    }
-    return Math.round(rent);
-  }
 
   function hasMonopolyGroup(playerId, cell) {
     if (cell.isUtility) { let utilities = gameState.boardData.filter(c => c.isUtility); return utilities.length>0 && utilities.every(u => u.owner === playerId); }
@@ -3213,19 +3005,9 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     let currentDebt = cp.bankLoan || 0;
     let netAssets = calculatePlayerTotalAssets(cp);
 
-    // ATURAN BARU 2: Tombol Pilihan Cicilan Bank 
-    let loanButtons = [];
-    if(currentDebt < maxLoan) { loanButtons.push({text: `Pinjam Sisa Limit (${formatRupiah(maxLoan - currentDebt)})`, type: "btn-green", value: "borrow"}); }
-    
-    if(currentDebt > 0) {
-        let cicil4 = Math.ceil(currentDebt / 4);
-        let cicil2 = Math.ceil(currentDebt / 2);
-        
-        if (cp.money >= cicil4 && cicil4 > 0) { loanButtons.push({text: `Cicil 25% / 4x (${formatRupiah(cicil4)})`, type: "btn-orange", value: `pay_${cicil4}`}); }
-        if (cp.money >= cicil2 && cicil2 > cicil4) { loanButtons.push({text: `Cicil 50% / 2x (${formatRupiah(cicil2)})`, type: "btn-orange", value: `pay_${cicil2}`}); }
-        if (cp.money >= currentDebt) { loanButtons.push({text: `Pelunasan 100% (${formatRupiah(currentDebt)})`, type: "btn-red", value: `pay_${currentDebt}`}); }
-    }
-    loanButtons.push({text: "Tutup", type: "btn-blue", value: "close"});
+    let loanButtons = [{text: "Tutup", type: "btn-blue", value: "close"}];
+    if(currentDebt > 0) { loanButtons.unshift({text: `Bayar Sebagian (${formatRupiah(Math.min(cp.money, currentDebt))})`, type: "btn-orange", value: "pay"}); }
+    if(currentDebt < maxLoan) { loanButtons.unshift({text: `Pinjam Limit Sisa (${formatRupiah(maxLoan - currentDebt)})`, type: "btn-green", value: "borrow"}); }
 
     let loanChoice = await showEventModal("Fasilitas Bank (Utang & Cicilan)", `Status Finansial ${cp.name}:\n\n- Kekayaan Bersih: ${formatRupiah(netAssets)}\n- Saldo Tunai: ${formatRupiah(cp.money)}\n- Utang Bank saat ini: ${formatRupiah(currentDebt)}\n- Sisa Limit Pinjaman: ${formatRupiah(maxLoan - currentDebt)}`, "🏦", loanButtons, "#8e44ad");
 
@@ -3235,8 +3017,9 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       triggerExpressionAndSpeak('joy', `${cp.name} berhasil mencairkan sisa limit pinjaman bank sebesar ${formatRupiah(borrowAmount)}.`);
       updateUI(); saveLocalState();
       await showEventModal("Pinjaman Dicairkan", `Dana pinjaman sebesar ${formatRupiah(borrowAmount)} telah dimasukkan ke saldo ${cp.name}.\nSaldo utang bank kini: ${formatRupiah(cp.bankLoan)}`, "💵", [{text: "Selesai", type: "btn-green"}]);
-    } else if (loanChoice && loanChoice.startsWith('pay_')) {
-      let payAmount = parseInt(loanChoice.split('_')[1], 10);
+    } else if (loanChoice === 'pay') {
+      let payAmount = Math.min(cp.money, currentDebt);
+      if(payAmount <= 0) { await showEventModalNoSpeak("Uang Tidak Cukup", "Saldo uang tunai Anda tidak cukup untuk membayar utang.", "❌", [{text:"OK", type:"btn-red"}]); return; }
       cp.money -= payAmount; cp.bankLoan -= payAmount;
       triggerExpressionAndSpeak('joy', `${cp.name} membayar cicilan utang bank sebesar ${formatRupiah(payAmount)}.`);
       updateUI(); saveLocalState();
@@ -3412,10 +3195,21 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
         evMediaContainer.innerHTML = "";
         if(mediaUrl) { 
           let img = document.createElement('img'); 
-          img.src = mediaUrl;  img.className = 'ev-media-img'; img.loading = 'eager'; img.style.display = 'block';
+          img.src = mediaUrl; 
+          img.className = 'ev-media-img'; 
+          img.loading = 'eager';
+          img.style.display = 'block';
           if(evIcon) evIcon.style.display = 'none';
-          img.onerror = function(){ this.style.display='none'; if(evIcon) evIcon.style.display='block'; }; 
-          img.onload = function(){ this.style.display='block'; if(evIcon) evIcon.style.display='none'; };
+          img.onerror = function(){ 
+            // Jika foto gagal, coba lagi atau tampilkan icon, tapi jangan flicker
+            console.log('Image failed to load:', mediaUrl);
+            this.style.display='none'; 
+            if(evIcon) evIcon.style.display='block'; 
+          }; 
+          img.onload = function(){
+            this.style.display='block';
+            if(evIcon) evIcon.style.display='none';
+          };
           evMediaContainer.appendChild(img); 
         } else {
           if(evIcon) evIcon.style.display='block';
@@ -3433,21 +3227,17 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
 
         modal.style.display = 'flex'; 
         let delaySetting = document.getElementById('cfgButtonDelay')?.value || 'normal';
+        // FIX: popup setelah tiba sampai giliran harus terdengar, pakai general biar tidak terfilter
         let speakPromise = speak(message, false, 'general');
-
-        // PENTING: Cek jika 100% dimainkan Bot (Simulasi)
-        let allBots = gameState.players.length > 0 && gameState.players.every(p => p.isBot);
 
         if(delaySetting === 'normal') {
           speakPromise.then(() => {
             actionButtons.forEach(b => { b.disabled = false; b.style.opacity = "1"; b.style.cursor = "pointer"; });
-            if (allBots) { setTimeout(()=>{ clearTimeout(timeoutId); safeResolve(buttons[0]?.value || null); }, 1500); }
           });
         } else {
           let waitTime = parseInt(delaySetting);
           setTimeout(() => {
             actionButtons.forEach(b => { b.disabled = false; b.style.opacity = "1"; b.style.cursor = "pointer"; });
-            if (allBots) { setTimeout(()=>{ clearTimeout(timeoutId); safeResolve(buttons[0]?.value || null); }, 1500); }
           }, waitTime);
         }
 
@@ -3479,15 +3269,10 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     if(cp) {
       let rollBtn = document.getElementById('rollBtn');
       if(rollBtn) { rollBtn.disabled = true; rollBtn.classList.remove('turn-highlight'); }
-      
+      // Cukup sekali membacakan giliran lempar dadu langsung tunggu pemain tekan lempar dadu
       await speak(`Giliran ${cp.name}. Silakan lempar dadu.`, true, 'general');
-      
-      if(rollBtn && !cp.inJail && !cp.isBot) { 
-         rollBtn.disabled = false; 
-         rollBtn.classList.add('turn-highlight'); 
-         rollBtn.focus(); // AUTO-FOCUS AGAR BISA ENTER/SPASI
-      }
-      // PENTING: Baris eksekusi bot di sini dihapus agar tidak berjalan ganda (di-handle oleh endTurn)
+      if(rollBtn && !cp.inJail && !cp.isBot) { rollBtn.disabled = false; rollBtn.classList.add('turn-highlight'); }
+      if(cp.isBot) executeBotTurn(cp);
     }
   }
 
@@ -3542,11 +3327,14 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       await new Promise(r => setTimeout(r, 1500));
       if (overlayDice) overlayDice.style.display = 'none';
 
-      let diceResult = generateFairDice();
-      let d1 = diceResult.d1; 
-      let d2 = diceResult.d2;
-      let steps = diceResult.total; 
-      let isDouble = diceResult.isDouble;
+      let holdDuration = Date.now() - pressStartTime; 
+      let randomSeed = (holdDuration % 97) + Math.floor(Math.random() * 1000);
+      let d1 = (randomSeed % 6) + 1; 
+      let d2 = ((Math.floor(randomSeed / 7)) % 6) + 1;
+      if (d1 === d2 && Math.random() > 0.3) d2 = (d2 % 6) + 1; 
+
+      let steps = d1 + d2; 
+      let isDouble = (d1 === d2);
       if (isDouble) doubleCount++; else doubleCount = 0;
 
       let p = gameState.players[gameState.turnIndex]; 
@@ -3605,7 +3393,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
 
       await animatePlayerWalk(p, steps);
       await handleLanded(p); 
-      await checkDebtStatus(p);
+      checkDebtStatus(p);
 
       if (isDouble && !p.inJail) {
         if(rollBtnEl) rollBtnEl.disabled = true;
@@ -3645,13 +3433,6 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     } catch(e){ endTurn(); } 
   }
 
-// --- MESIN DADU ADIL (TANPA CHEAT) ---
-  function generateFairDice() {
-    let d1 = Math.floor(Math.random() * 6) + 1;
-    let d2 = Math.floor(Math.random() * 6) + 1;
-    return { d1, d2, total: d1 + d2, isDouble: d1 === d2 };
-  }
-
   function showEventModalNoSpeak(title, message, icon, buttons, headerColor = "#0984e3", mediaUrl = null) {
     return new Promise(resolve => {
       try {
@@ -3661,30 +3442,36 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
         const evMediaContainer = document.getElementById('evMediaContainer'); 
         const evIcon = document.getElementById('evIcon'); 
         const evActions = document.getElementById('evActions');
-        
         if(!modal || !evTitle || !evMessage || !evActions){ resolve(null); return; }
-        
         let resolved = false;
         const safeResolve = (val) => { 
           if(!resolved){ resolved = true; try { modal.style.display = 'none'; } catch(e){} resolve(val); } 
         };
         const timeoutId = setTimeout(()=>{ safeResolve(buttons[0]?.value || null); }, 60000);
-        
         evTitle.innerText = title; evTitle.style.background = headerColor; evMessage.innerText = message; 
         if(evIcon){ evIcon.innerText = icon || "🎲"; evIcon.style.display = mediaUrl ? 'none' : 'block'; }
-        
         evMediaContainer.innerHTML = "";
         if(mediaUrl) { 
           let img = document.createElement('img'); 
-          img.src = mediaUrl; img.className = 'ev-media-img'; img.loading = 'eager'; img.style.display = 'block';
+          img.src = mediaUrl; 
+          img.className = 'ev-media-img'; 
+          img.loading = 'eager';
+          img.style.display = 'block';
           if(evIcon) evIcon.style.display = 'none';
-          img.onerror = function(){ this.style.display='none'; if(evIcon) evIcon.style.display='block'; }; 
-          img.onload = function(){ this.style.display='block'; if(evIcon) evIcon.style.display='none'; };
+          img.onerror = function(){ 
+            // Jika foto gagal, coba lagi atau tampilkan icon, tapi jangan flicker
+            console.log('Image failed to load:', mediaUrl);
+            this.style.display='none'; 
+            if(evIcon) evIcon.style.display='block'; 
+          }; 
+          img.onload = function(){
+            this.style.display='block';
+            if(evIcon) evIcon.style.display='none';
+          };
           evMediaContainer.appendChild(img); 
         } else {
           if(evIcon) evIcon.style.display='block';
         }
-        
         evActions.innerHTML = "";
         let actionButtons = [];
         buttons.forEach(btn => { 
@@ -3694,15 +3481,8 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
           b.onclick = () => { if(b.disabled) return; clearTimeout(timeoutId); safeResolve(btn.value); }; 
           evActions.appendChild(b); actionButtons.push(b);
         });
-        
         modal.style.display = 'flex'; 
-
-        // PENTING: Cek jika 100% dimainkan Bot (Simulasi)
-        let allBots = gameState.players.length > 0 && gameState.players.every(p => p.isBot);
-        if(allBots) {
-           setTimeout(()=>{ clearTimeout(timeoutId); safeResolve(buttons[0]?.value || null); }, 2500); 
-        }
-
+        // Tidak ada speak - popup tidak perlu dibaca, langsung bisa interrupt ke silahkan giliran
         modal.onclick = (e) => { 
           if(e.target === modal){ clearTimeout(timeoutId); safeResolve(buttons[0]?.value || null); } 
         };
@@ -3719,16 +3499,9 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       btn.style.background = isGood ? '#27ae60' : '#c0392b';
       btn.innerHTML = isGood ? 'TERIMA<br>' : 'JALANKAN<br>HUKUMAN';
       modal.style.display = 'flex';
-      
       let cleanup = () => { modal.style.display = 'none'; resolve(); };
       btn.onclick = cleanup;
       modal.onclick = (e) => { if (e.target === modal) cleanup(); };
-
-      // PENTING: Cek jika 100% dimainkan Bot (Simulasi)
-      let allBots = gameState.players.length > 0 && gameState.players.every(p => p.isBot);
-      if(allBots) {
-         setTimeout(()=>{ cleanup(); }, 3500); 
-      }
     });
   }
 
@@ -3797,7 +3570,17 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
         let ahead = (bot.pos + i) % 40;
         let c = gameState.boardData[ahead];
         if(c && c.owner !== null && c.owner !== bot.id && !c.mortgaged && c.price>0){
-          let rent = calculateRent(c, c.owner);
+          let base = Math.round(c.price*0.2);
+          let monoRent = base * 5;
+          let houseCost = getHousePrice(c);
+          let hotelCost = getHotelPrice(c);
+          let rent = base;
+          
+          if(hasMonopolyGroup(c.owner, c)) {
+              rent = monoRent;
+              if(c.hotels>0) rent = monoRent + (4 * houseCost) + (c.hotels * hotelCost);
+              else if(c.houses>0) rent = monoRent + (c.houses * houseCost);
+          }
           dangerousRent += rent;
         }
       }
@@ -3846,7 +3629,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       if(money < price + 50) return false;
       if(completesMonopoly) return true;
       // ROI: harga sewa dasar vs harga beli
-      let baseRent = getBaseRent(cell);
+      let baseRent = Math.round(price*0.2);
       let roi = baseRent / price;
       // Jika ROI tinggi atau bagian dari rencana monopoli
       if(roi > 0.18) return true;
@@ -3886,11 +3669,10 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
   }
 
   async function executeBotTurn(bot) {
-    let diceResult = generateFairDice();
-    let d1 = diceResult.d1;
-    let d2 = diceResult.d2;
-    let steps = diceResult.total;
-    let isDouble = diceResult.isDouble;
+    let d1 = Math.floor(Math.random() * 6) + 1;
+    let d2 = Math.floor(Math.random() * 6) + 1;
+    let steps = d1 + d2;
+    let isDouble = (d1 === d2);
     if (isDouble) doubleCount++; else doubleCount = 0;
 
     let diceDisp = document.getElementById('diceDisplay');
@@ -3978,7 +3760,6 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     } else {
       await animatePlayerWalk(bot, steps);
       await handleBotLanding(bot);
-      await checkDebtStatus(bot); // <-- Tambahkan await di sini
     }
 
     // Aturan dadu dobel berlaku sama untuk bot dan manusia
@@ -4096,12 +3877,11 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     // Pajak - wajib bayar sama seperti manusia - TTS baru
     if (cell.special === 'tax') {
       playVocalExpression('sad');
-      let pSpeak = speak(`${bot.name} membayar pajak sebesar ${formatRupiahSpoken(cell.price)}`, true, 'payment');
-      let pModal = showEventModalNoSpeak("Bayar Pajak - Bot", `${bot.name} bayar pajak ${formatRupiah(cell.price)}`, "💸", [{text: "Bayar", type: "btn-red"}], "#d63031", null);
-      await Promise.all([pSpeak, pModal]);
+      await speak(`${bot.name} silahkan bayar pajak ${formatRupiahSpoken(cell.price)}`, true, 'payment');
+      await showEventModal("Bayar Pajak - Bot", `${bot.name} bayar pajak ${formatRupiah(cell.price)}`, "💸", [{text: "Bayar", type: "btn-red"}], "#d63031", null, 'payment');
       bot.money -= cell.price;
       return;
-    }
+    } 
     // Masuk Penjara (petak 30) - cukup popup saja
     else if (bot.pos === 30) {
       playVocalExpression('cry');
@@ -4115,13 +3895,16 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     else if (cell.price > 0 && !cell.special) {
       if (cell.owner === null) {
         if(shouldBotBuy(bot, cell)){
+          // Langsung potong dan set owner - sukses langsung dibacakan setelah keputusan beli bot
           bot.money -= cell.price; cell.owner = bot.id;
           updateUI(); 
           playVocalExpression('joy');
-          let baseRentBot = getBaseRent(cell); // MENGGUNAKAN STANDAR BARU
-          let pSpeak = speak(`Pembelian sukses. ${cell.name} sekarang milik ${bot.name}. Harga beli ${formatRupiahSpoken(cell.price)}. Sewa dasar ${formatRupiahSpoken(baseRentBot)}.`, true, 'payment');
-          let pModal = showEventModalNoSpeak("Bot Beli Properti!", `${bot.avatar} ${bot.name} [${bot.botLevel}] membeli ${cell.name} seharga ${formatRupiah(cell.price)}!`, "🏠", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img);
-          await Promise.all([pSpeak, pModal]);
+          await speak(`Pembelian aset sukses, ${cell.name} sekarang milik ${bot.name}`, true, 'payment');
+          let baseRentBot = Math.round(cell.price*0.2);
+          await speak(`Detil aset, ${cell.name}, harga beli ${formatRupiahSpoken(cell.price)}, sewa dasar ${formatRupiahSpoken(baseRentBot)}`, false, 'payment');
+          await showEventModal("Bot Beli Properti!", `${bot.avatar} ${bot.name} [${bot.botLevel}] membeli ${cell.name} seharga ${formatRupiah(cell.price)}!`, "🏠", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img, 'payment');
+        } else {
+          await showEventModal("Bot Lewati Beli", `${bot.name} [${bot.botLevel}] melewati ${cell.name} - strategi ${bot.botLevel}`, "🤔", [{text: "Lanjut", type: "btn-blue"}], "#636e72", cell.img, 'arrival');
         }
       } 
       else if (cell.owner === bot.id && cell.color && !cell.mortgaged) {
@@ -4135,26 +3918,36 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
             await showCinematic('buildHouse', bot, cell.name);
             bot.money -= houseCost; cell.houses = newHouseBot;
             playVocalExpression('joy');
-            await speak(`Sukses membangun rumah ke ${newHouseBot} milik ${bot.name} di ${cell.name}`, true, 'build');
-            await showEventModalNoSpeak("Bot Bangun Rumah!", `${bot.name} [${bot.botLevel}] bangun rumah ke-${cell.houses} di ${cell.name}`, "🏗️", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img);
+            await speak(`Sukses pada peningkatan aset penambahan rumah ke ${newHouseBot} dari ${oldHouseBot} menjadi ${newHouseBot} milik ${bot.name} dipetak ${cell.name}`, true, 'build');
+            await showEventModal("Bot Bangun Rumah!", `${bot.name} [${bot.botLevel}] bangun rumah ke-${cell.houses} di ${cell.name}`, "🏗️", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img, 'build');
           } else if(canBuildHotel){
             let oldHotelBot = cell.hotels; let newHotelBot = oldHotelBot + 1;
             await showCinematic('buildHotel', bot, cell.name);
             bot.money -= hotelCost; cell.hotels = newHotelBot;
             playVocalExpression('joy');
-            await speak(`Sukses membangun hotel milik ${bot.name} di ${cell.name}`, true, 'build');
-            await showEventModalNoSpeak("Bot Bangun Hotel!", `${bot.name} [${bot.botLevel}] bangun hotel di ${cell.name}`, "🏨", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img);
+            await speak(`Sukses pada peningkatan aset penambahan hotel ke ${newHotelBot} dari ${oldHotelBot} menjadi ${newHotelBot} milik ${bot.name} dipetak ${cell.name}`, true, 'build');
+            await showEventModal("Bot Bangun Hotel!", `${bot.name} [${bot.botLevel}] bangun hotel ke-${cell.hotels} di ${cell.name}`, "🏨", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img, 'build');
           }
         }
       }
       else if (cell.owner !== bot.id && !cell.mortgaged) {
         // Bayar sewa - sama seperti manusia
         let owner = gameState.players.find(pl => pl.id === cell.owner); if(!owner) return;
-        let rent = calculateRent(cell, owner.id);
+        let baseRent = cell.price > 0 ? Math.round(cell.price * 0.2) : 0;
+        let monoRent = baseRent * 5;
+        let houseCost = getHousePrice(cell);
+        let hotelCost = getHotelPrice(cell);
+        let rent = baseRent; 
+        let isMono = hasMonopolyGroup(owner.id, cell);
+        
+        if(isMono) {
+            rent = monoRent;
+            if(cell.hotels > 0) rent = monoRent + (4 * houseCost) + (cell.hotels * hotelCost);
+            else if(cell.houses > 0) rent = monoRent + (cell.houses * houseCost);
+        }
+        rent = Math.round(rent);
         playVocalExpression('sad');
-        let pSpeak = speak(`${bot.name} bayar sewa ${formatRupiahSpoken(rent)} ke ${owner.name} untuk ${cell.name}`, true, 'payment');
-        let pModal = showEventModalNoSpeak("Bayar Sewa! - Bot", `${bot.name} bayar sewa ${formatRupiah(rent)} ke ${owner.name} untuk ${cell.name}`, "🤝", [{text: "Bayar", type: "btn-blue"}], "#e84393", cell.img);
-        await Promise.all([pSpeak, pModal]);
+        await showEventModal("Bayar Sewa! - Bot", `${bot.name} bayar sewa ${formatRupiah(rent)} ke ${owner.name} untuk ${cell.name}`, "🤝", [{text: "Bayar", type: "btn-blue"}], "#e84393", cell.img, 'payment');
         bot.money -= rent; owner.money += rent;
       }
     }
@@ -4347,9 +4140,9 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
 
       if (cell.special === 'tax') {
         playVocalExpression('sad');
-        let pSpeak = speak(`${p.name} silahkan bayar pajak ${formatRupiahSpoken(cell.price)}`, true, 'payment');
-        let pModal = showEventModalNoSpeak("Bayar Pajak", `Tagihan pajak Anda sebesar ${formatRupiah(cell.price)}`, "💸", [{text: "Bayar", type: "btn-red"}], "#d63031", null);
-        await Promise.all([pSpeak, pModal]);
+        // TTS baru: Pemain? silahkan bayar pajak ?anda
+        await speak(`${p.name} silahkan bayar pajak ${formatRupiahSpoken(cell.price)}`, true, 'payment');
+        await showEventModal("Bayar Pajak", `Tagihan pajak Anda sebesar ${formatRupiah(cell.price)}`, "💸", [{text: "Bayar", type: "btn-red"}], "#d63031", null, 'payment');
         p.money -= cell.price;
         return;
       } 
@@ -4360,7 +4153,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
         return;
       } 
       else if (cell.price > 0 && !cell.special) {
-        let baseRent = getBaseRent(cell); // MENGGUNAKAN STANDAR BARU
+        let baseRent = cell.price > 0 ? Math.round(cell.price * 0.2) : 0;
         if (cell.owner === null) {
           if (p.money < cell.price) {
             playVocalExpression('sad');
@@ -4373,10 +4166,8 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
             p.money -= cell.price; cell.owner = p.id; 
             updateUI(); saveLocalState();
             playVocalExpression('joy');
-            // Menghapus deklarasi ulang baseRent agar mengambil dari atas
-            let pSpeak = speak(`Pembelian sukses. ${cell.name} sekarang milik ${p.name}. Harga beli ${formatRupiahSpoken(cell.price)}. Sewa dasar ${formatRupiahSpoken(baseRent)}.`, true, 'general');
-            let pModal = showEventModalNoSpeak("Beli Properti Sukses!", `Anda berhasil membeli ${cell.name} seharga ${formatRupiah(cell.price)}!`, "🏠", [{text: "OK", type: "btn-green"}], "#0984e3", cell.img);
-            await Promise.all([pSpeak, pModal]);
+            await speak(`Pembelian aset sukses, ${cell.name} sekarang milik ${p.name}`, true, 'general');
+            await speak(`Detil aset, ${cell.name}, harga beli ${formatRupiahSpoken(cell.price)}, sewa dasar ${formatRupiahSpoken(baseRent)}`, false, 'general');
           }
         } 
         else if (cell.owner === p.id && cell.color && !cell.mortgaged) {
@@ -4394,7 +4185,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
             try{ playBuildSound(); }catch(e){}
             p.money -= houseCost; cell.houses = newHouse; 
             playVocalExpression('joy');
-            await speak(`Sukses membangun rumah ke ${newHouse} milik ${p.name} di wilayah ${cell.name}`, true, 'build');
+            await speak(`Sukses pada peningkatan aset penambahan rumah ke ${newHouse} dari ${oldHouse} menjadi ${newHouse} milik ${p.name} dipetak ${cell.name}`, true, 'build');
           } 
           else if(upRes === 'hotel' && p.money >= hotelCost) { 
             let oldHotel = cell.hotels; let newHotel = oldHotel + 1;
@@ -4403,17 +4194,28 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
             try{ playBuildSound(); }catch(e){}
             p.money -= hotelCost; cell.hotels = newHotel; 
             playVocalExpression('joy');
-            await speak(`Sukses membangun hotel eksklusif milik ${p.name} di wilayah ${cell.name}`, true, 'build');
+            await speak(`Sukses pada peningkatan aset penambahan hotel ke ${newHotel} dari ${oldHotel} menjadi ${newHotel} milik ${p.name} dipetak ${cell.name}`, true, 'build');
           }
         }
         else if (cell.owner !== p.id && !cell.mortgaged) {
           let owner = gameState.players.find(pl => pl.id === cell.owner); if(!owner) return;
-          let rent = calculateRent(cell, owner.id); 
-          let rentDesc = `Anda berhenti di properti milik ${owner.avatar} ${owner.name}.\nWilayah: ${cell.name}\n\nTotal Tagihan Sewa: ${formatRupiah(rent)}`;
+          let monoRent = baseRent * 5;
+          let houseCost = getHousePrice(cell);
+          let hotelCost = getHotelPrice(cell);
+          let rent = baseRent; 
+          let isMono = hasMonopolyGroup(owner.id, cell);
+          
+          if(isMono) {
+              rent = monoRent;
+              if(cell.hotels > 0) rent = monoRent + (4 * houseCost) + (cell.hotels * hotelCost);
+              else if(cell.houses > 0) rent = monoRent + (cell.houses * houseCost);
+          }
+          rent = Math.round(rent);
+          let rentDesc = `Anda berhenti di properti milik ${owner.avatar} ${owner.name}.\nWilayah: ${cell.name}\nTarif Sewa Dasar: ${formatRupiah(baseRent)}`;
+          if(isMono && cell.houses === 0 && cell.hotels === 0) rentDesc += `\n[👑 Bonus Monopoli Kompleks/Utilitas: Sewa jadi 5 Kali Lipat!]`;
+          rentDesc += `\nTotal Tagihan Sewa: ${formatRupiah(rent)}`;
           playVocalExpression('sad');
-          let pSpeak = speak(`${p.name} membayar sewa kepada ${owner.name} sebesar ${formatRupiahSpoken(rent)}`, true, 'payment');
-          let pModal = showEventModalNoSpeak("Bayar Sewa Properti!", rentDesc, "🤝", [{text: "Bayar ke " + owner.name, type: "btn-blue", value: "p"}], "#e84393", cell.img);
-          await Promise.all([pSpeak, pModal]);
+          await showEventModal("Bayar Sewa Properti!", rentDesc, "🤝", [{text: "Bayar ke " + owner.name, type: "btn-blue", value: "p"}], "#e84393", cell.img, 'payment');
           p.money -= rent; owner.money += rent;
         }
       }
