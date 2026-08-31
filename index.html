@@ -1885,10 +1885,10 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       } else if (cell.isUtility) {
         let isPLN = cell.name.includes('PLN');
         let rowDesc = isPLN ? "Pink/Oranye" : "Merah/Kuning";
-        rents.push({ label: 'Sewa 1 Utilitas', value: formatRupiah(baseRent) });
-        rents.push({ label: 'Sewa 2 Utilitas', value: formatRupiah(baseRent * 2) });
-        rents.push({ label: `Sewa (1 Utilitas + 1 Komp ${rowDesc})`, value: formatRupiah(baseRent * 5) });
-        rents.push({ label: `Sewa (2 Utilitas + 1 Komp ${rowDesc})`, value: formatRupiah(baseRent * 10) });
+        rents.push({ label: 'Sewa Dasar 1 Utilitas', value: formatRupiah(baseRent) });
+        rents.push({ label: 'Sewa 2 Utilitas (Pemilik Punya Keduanya)', value: formatRupiah(baseRent * 5) });
+        rents.push({ label: `Sewa Pajak Silang (Pengunjung Punya Komp. ${rowDesc})`, value: formatRupiah(baseRent * 5) });
+        rents.push({ label: `Sewa Pajak Ganda (2 Util + Pengunjung Punya Komp. ${rowDesc})`, value: formatRupiah(baseRent * 10) });
       }
       
       let currentHouses = cell.houses || 0; let currentHotels = cell.hotels || 0;
@@ -3024,7 +3024,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     return false;
   }
 
-  function calculateRent(cell, ownerId) {
+  function calculateRent(cell, ownerId, visitorId = null) {
     if (!cell || cell.price <= 0 || cell.special) return 0;
     let baseRent = getBaseRent(cell);
     
@@ -3035,26 +3035,32 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       return transportCount * 50; // 50 Juta per petak yang dimiliki
     }
 
-    // ATURAN BARU 3: Tarif Progresif Utilitas Berdasarkan Kompleks Deret yang Sama
+    // ATURAN BARU 3 (REVISI FINAL): Tarif Utilitas Berdasarkan Harta Pengunjung
     if (cell.isUtility) {
       let isPLN = cell.name.includes('PLN');
       let relevantColors = isPLN ? ['#ff6b81', '#ffa502'] : ['#ff4757', '#eccc68'];
       
-      let hasComplexInRow = false;
-      for (let col of relevantColors) {
-        let group = gameState.boardData.filter(c => c.color === col);
-        if (group.length > 0 && group.every(c => c.owner === ownerId)) {
-          hasComplexInRow = true; 
-          break; 
+      let visitorHasRelevantComplex = false;
+      // Cek apakah pengunjung (Pemain yang mendarat) punya kompleks di deret ini
+      if (visitorId !== null) {
+        for (let col of relevantColors) {
+          let group = gameState.boardData.filter(c => c.color === col);
+          if (group.length > 0 && group.every(c => c.owner === visitorId)) {
+            visitorHasRelevantComplex = true; 
+            break; 
+          }
         }
       }
       
       let utilityCount = gameState.boardData.filter(c => c.isUtility && c.owner === ownerId).length;
+      let ownsBoth = utilityCount === 2;
 
-      if (utilityCount === 2 && hasComplexInRow) return baseRent * 10;
-      if (utilityCount === 1 && hasComplexInRow) return baseRent * 5;
-      if (utilityCount === 2 && !hasComplexInRow) return baseRent * 2;
-      return baseRent;
+      // Logika Harga:
+      if (visitorHasRelevantComplex) {
+        return ownsBoth ? baseRent * 10 : baseRent * 5;
+      } else {
+        return ownsBoth ? baseRent * 5 : baseRent;
+      }
     }
 
     let housePrice = getHousePrice(cell);
@@ -3062,7 +3068,6 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     let rent = baseRent;
     let isMono = hasMonopolyGroup(ownerId, cell);
 
-    // KOREKSI FINAL: Pastikan rumus di sini sama persis 100% dengan tampilan di Info Tarif
     if (cell.color) {
       if (cell.hotels > 0) {
         let baseRent4House = baseRent + (0.25 * 4 * housePrice);
@@ -3832,7 +3837,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
         let ahead = (bot.pos + i) % 40;
         let c = gameState.boardData[ahead];
         if(c && c.owner !== null && c.owner !== bot.id && !c.mortgaged && c.price>0){
-          let rent = calculateRent(c, c.owner);
+          let rent = calculateRent(c, c.owner, bot.id);
           dangerousRent += rent;
         }
       }
@@ -4185,7 +4190,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       else if (cell.owner !== bot.id && !cell.mortgaged) {
         // Bayar sewa - sama seperti manusia
         let owner = gameState.players.find(pl => pl.id === cell.owner); if(!owner) return;
-        let rent = calculateRent(cell, owner.id);
+        let rent = calculateRent(cell, owner.id, bot.id);
         playVocalExpression('sad');
         let pSpeak = speak(`${bot.name} bayar sewa ${formatRupiahSpoken(rent)} ke ${owner.name} untuk ${cell.name}`, true, 'payment');
         let pModal = showEventModalNoSpeak("Bayar Sewa! - Bot", `${bot.name} bayar sewa ${formatRupiah(rent)} ke ${owner.name} untuk ${cell.name}`, "🤝", [{text: "Bayar", type: "btn-blue"}], "#e84393", cell.img);
@@ -4443,7 +4448,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
         }
         else if (cell.owner !== p.id && !cell.mortgaged) {
           let owner = gameState.players.find(pl => pl.id === cell.owner); if(!owner) return;
-          let rent = calculateRent(cell, owner.id); 
+          let rent = calculateRent(cell, owner.id, p.id);
           let rentDesc = `Anda berhenti di properti milik ${owner.avatar} ${owner.name}.\nWilayah: ${cell.name}\n\nTotal Tagihan Sewa: ${formatRupiah(rent)}`;
           playVocalExpression('sad');
           let pSpeak = speak(`${p.name} membayar sewa kepada ${owner.name} sebesar ${formatRupiahSpoken(rent)}`, true, 'payment');
