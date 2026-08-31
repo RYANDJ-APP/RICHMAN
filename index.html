@@ -1885,9 +1885,10 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       } else if (cell.isUtility) {
         let isPLN = cell.name.includes('PLN');
         let rowDesc = isPLN ? "Pink/Oranye" : "Merah/Kuning";
-        rents.push({ label: 'Sewa Dasar Utilitas', value: formatRupiah(baseRent) });
-        rents.push({ label: 'Sewa Normal (5x Dasar)', value: formatRupiah(baseRent * 5) });
-        rents.push({ label: `Sewa Monopoli Deret (Punya Kompleks ${rowDesc})`, value: formatRupiah(baseRent * 10) });
+        rents.push({ label: 'Sewa 1 Utilitas', value: formatRupiah(baseRent) });
+        rents.push({ label: 'Sewa 2 Utilitas', value: formatRupiah(baseRent * 2) });
+        rents.push({ label: `Sewa (1 Utilitas + 1 Komp ${rowDesc})`, value: formatRupiah(baseRent * 5) });
+        rents.push({ label: `Sewa (2 Utilitas + 1 Komp ${rowDesc})`, value: formatRupiah(baseRent * 10) });
       }
       
       let currentHouses = cell.houses || 0; let currentHotels = cell.hotels || 0;
@@ -3034,11 +3035,9 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       return transportCount * 50; // 50 Juta per petak yang dimiliki
     }
 
-    // ATURAN BARU 3 (REVISI): Tarif Progresif Utilitas Berdasarkan Kompleks Deret yang Sama
+    // ATURAN BARU 3: Tarif Progresif Utilitas Berdasarkan Kompleks Deret yang Sama
     if (cell.isUtility) {
-      // Cek apakah ini PLN atau PDAM untuk menentukan deret warnanya
       let isPLN = cell.name.includes('PLN');
-      // PLN mengecek deret 11-20 (Pink & Oranye), PDAM mengecek deret 21-30 (Merah & Kuning)
       let relevantColors = isPLN ? ['#ff6b81', '#ffa502'] : ['#ff4757', '#eccc68'];
       
       let hasComplexInRow = false;
@@ -3046,16 +3045,16 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
         let group = gameState.boardData.filter(c => c.color === col);
         if (group.length > 0 && group.every(c => c.owner === ownerId)) {
           hasComplexInRow = true; 
-          break; // Jika punya minimal 1 kompleks di deret tersebut, langsung valid
+          break; 
         }
       }
+      
+      let utilityCount = gameState.boardData.filter(c => c.isUtility && c.owner === ownerId).length;
 
-      // 10x Lipat jika punya kompleks di deret yang sama, 5x lipat jika tidak punya
-      if (hasComplexInRow) {
-        return baseRent * 10;
-      } else {
-        return baseRent * 5;
-      }
+      if (utilityCount === 2 && hasComplexInRow) return baseRent * 10;
+      if (utilityCount === 1 && hasComplexInRow) return baseRent * 5;
+      if (utilityCount === 2 && !hasComplexInRow) return baseRent * 2;
+      return baseRent;
     }
 
     let housePrice = getHousePrice(cell);
@@ -3063,18 +3062,16 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     let rent = baseRent;
     let isMono = hasMonopolyGroup(ownerId, cell);
 
-    let monoRent = baseRent * 5;
-
-    if (isMono) {
+    // KOREKSI FINAL: Pastikan rumus di sini sama persis 100% dengan tampilan di Info Tarif
+    if (cell.color) {
       if (cell.hotels > 0) {
-        rent = monoRent + (4 * housePrice) + (cell.hotels * hotelPrice);
+        let baseRent4House = baseRent + (0.25 * 4 * housePrice);
+        rent = baseRent4House + (0.25 * cell.hotels * hotelPrice);
       } else if (cell.houses > 0) {
-        rent = monoRent + (cell.houses * housePrice);
-      } else {
-        rent = monoRent; // Tanah kosong tapi monopoli
+        rent = baseRent + (0.25 * cell.houses * housePrice);
+      } else if (isMono) {
+        rent = baseRent * 5;
       }
-    } else {
-      rent = baseRent; // Tanah kosong biasa
     }
     
     return Math.round(rent);
