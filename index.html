@@ -1872,9 +1872,9 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       if(cell.color){
         rents.push({ label: 'Sewa Dasar Tanah', value: formatRupiah(baseRent) });
         rents.push({ label: 'Sewa Monopoli Kompleks', value: formatRupiah(monoRent) });
-        for(let i=1;i<=4;i++) rents.push({ label: `Sewa ${i} Rumah 🏠`, value: formatRupiah(Math.round(monoRent + (i * housePrice))) });
-        let rent4House = monoRent + (4 * housePrice);
-        for(let i=1;i<=4;i++) rents.push({ label: `Sewa ${i} Hotel 🏨`, value: formatRupiah(Math.round(rent4House + (i * hotelPrice))) });
+        for(let i=1;i<=4;i++) rents.push({ label: `Sewa ${i} Rumah 🏠`, value: formatRupiah(Math.round(baseRent + (0.25 * i * housePrice))) });
+        let baseRent4House = baseRent + (0.25 * 4 * housePrice);
+        for(let i=1;i<=4;i++) rents.push({ label: `Sewa ${i} Hotel 🏨`, value: formatRupiah(Math.round(baseRent4House + (0.25 * i * hotelPrice))) });
         rents.push({ label: 'Harga 1 Rumah', value: formatRupiah(housePrice) });
         rents.push({ label: 'Harga 1 Hotel', value: formatRupiah(hotelPrice) });
       } else if (isTransport) {
@@ -3115,19 +3115,7 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
         
         ownedCells.forEach((c) => {
           let cellIdx = gameState.boardData.findIndex(item => item.name === c.name);
-          
-          let levelStr = '';
-          if (c.mortgaged) {
-            let roundsPassed = p.startCount - (c.mortgageRound || 0);
-            levelStr = `<span style="color:#d63031">Digadai ⚠️ (${roundsPassed}/10)</span>`;
-          } else if (c.hotels > 0) {
-            levelStr = `${c.hotels} Hotel`;
-          } else if (c.houses > 0) {
-            levelStr = `${c.houses} Rumah`;
-          } else {
-            levelStr = 'Tanah';
-          }
-
+          let levelStr = c.mortgaged ? 'Digadai ⚠️' : (c.hotels > 0 ? `${c.hotels} Hotel` : (c.houses > 0 ? `${c.houses} Rumah` : 'Tanah'));
           let actionBtn = c.mortgaged 
             ? `<button class="btn-action-sm bg-mortgage" onclick="toggleMortgage(${cellIdx})">Tebus</button>`
             : `<button class="btn-action-sm bg-mortgage" onclick="toggleMortgage(${cellIdx})">Gadai</button>`;
@@ -3193,9 +3181,8 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
           if(owner) {
             ownerName = `${owner.avatar} ${owner.name}`;
             if(cell.mortgaged) { 
-              let roundsPassed = owner.startCount - (cell.mortgageRound || 0);
-              levelDesc = `<span style="color:#d63031; font-weight:bold;">Gadai ⚠️ (${roundsPassed}/10 putaran)</span>`; 
-              if(badge){ badge.style.background = '#e67e22'; badge.innerHTML = `${owner.avatar} 📄 (${roundsPassed}/10)`; } 
+              levelDesc = 'Gadai ⚠️'; 
+              if(badge){ badge.style.background = '#e67e22'; badge.innerHTML = `${owner.avatar} 📄 (Gadai)`; } 
             } else {
               if(cell.hotels > 0) { 
                 levelDesc = `Hotel 🏨 (${cell.hotels})`; 
@@ -3215,10 +3202,9 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
               let houseP = getHousePrice(cell); let hotelP = getHotelPrice(cell);
               let mortgageVal = Math.floor(cell.price * 0.5) + (0.5 * cell.houses * houseP) + (0.5 * cell.hotels * hotelP);
               let redeemCost = Math.floor(mortgageVal * 1.1);
-              let roundsPassed = owner.startCount - (cell.mortgageRound || 0);
-              mortgageBody.innerHTML += `<tr><td><strong>${cell.name}</strong></td><td>${ownerName}</td><td><span style="color:#d63031">Digadai ⚠️ (${roundsPassed}/10)</span></td><td>${formatRupiah(redeemCost)}</td></tr>`;
+              mortgageBody.innerHTML += `<tr><td><strong>${cell.name}</strong></td><td>${ownerName}</td><td>Digadai ⚠️</td><td>${formatRupiah(redeemCost)}</td></tr>`;
               hasMortgagedAny = true;
-            }
+            } 
             else { 
               actionBtns = `<button class="btn-action-sm bg-mortgage" onclick="toggleMortgage(${i})">Gadai Paket</button> <button class="btn-action-sm bg-sell" onclick="sellAssetPackage(${i})">Jual Paket</button>`; 
             }
