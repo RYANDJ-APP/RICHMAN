@@ -1859,8 +1859,8 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       header.innerHTML = `${cell.name}<br><small style="font-size:12px; opacity:0.9;">${cell.color ? 'Kompleks: '+cell.color : cell.isUtility ? 'Utilitas' : 'Transportasi'}</small>`;
       
       let basePrice = cell.price;
-      let baseRent = getBaseRent(cell); // MENGGUNAKAN STANDAR BARU
-      let monoRent = Math.round(baseRent * 5);
+      let baseRent = getBaseRent(cell); 
+      let monoRent = Math.round(baseRent * 10); // MONOPOLI = 10X LIPAT
       let housePrice = getHousePrice(cell);
       let hotelPrice = getHotelPrice(cell);
       
@@ -1871,12 +1871,21 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
 
       if(cell.color){
         rents.push({ label: 'Sewa Dasar Tanah', value: formatRupiah(baseRent) });
-        rents.push({ label: 'Sewa Monopoli Kompleks', value: formatRupiah(monoRent) });
-        for(let i=1;i<=4;i++) rents.push({ label: `Sewa ${i} Rumah 🏠`, value: formatRupiah(Math.round(baseRent + (0.25 * i * housePrice))) });
-        let baseRent4House = baseRent + (0.25 * 4 * housePrice);
-        for(let i=1;i<=4;i++) rents.push({ label: `Sewa ${i} Hotel 🏨`, value: formatRupiah(Math.round(baseRent4House + (0.25 * i * hotelPrice))) });
-        rents.push({ label: 'Harga 1 Rumah', value: formatRupiah(housePrice) });
-        rents.push({ label: 'Harga 1 Hotel', value: formatRupiah(hotelPrice) });
+        rents.push({ label: 'Sewa Monopoli Kompleks (10x)', value: formatRupiah(monoRent) });
+        
+        // Sewa dengan rumah = Monopoli (10x Dasar) + (Jumlah * Harga Rumah)
+        for(let i=1;i<=4;i++) {
+            rents.push({ label: `Sewa Monopoli + ${i} Rumah 🏠`, value: formatRupiah(Math.round(monoRent + (i * housePrice))) });
+        }
+        
+        let rent4House = monoRent + (4 * housePrice);
+        // Sewa dengan hotel = Monopoli (10x Dasar) + 4 Rumah + (Jumlah * Harga Hotel)
+        for(let i=1;i<=4;i++) {
+            rents.push({ label: `Sewa Monopoli + ${i} Hotel 🏨`, value: formatRupiah(Math.round(rent4House + (i * hotelPrice))) });
+        }
+        
+        rents.push({ label: 'Harga 1 Rumah (Dibeli)', value: formatRupiah(housePrice) });
+        rents.push({ label: 'Harga 1 Hotel (Dibeli)', value: formatRupiah(hotelPrice) });
       } else if (isTransport) {
         rents.push({ label: 'Sewa 1 Stasiun/Bandara', value: formatRupiah(50) });
         rents.push({ label: 'Sewa 2 Stasiun/Bandara', value: formatRupiah(100) });
@@ -3032,16 +3041,15 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     let isTransport = !cell.color && !cell.isUtility && !cell.special && cell.type !== 'corner';
     if (isTransport) {
       let transportCount = gameState.boardData.filter(c => !c.color && !c.isUtility && !c.special && c.type !== 'corner' && c.owner === ownerId).length;
-      return transportCount * 50; // 50 Juta per petak yang dimiliki
+      return transportCount * 50; 
     }
 
-    // ATURAN BARU 3 (REVISI FINAL): Tarif Utilitas Berdasarkan Harta Pengunjung
+    // ATURAN BARU 3: Tarif Utilitas Berdasarkan Harta Pengunjung
     if (cell.isUtility) {
       let isPLN = cell.name.includes('PLN');
       let relevantColors = isPLN ? ['#ff6b81', '#ffa502'] : ['#ff4757', '#eccc68'];
       
       let visitorHasRelevantComplex = false;
-      // Cek apakah pengunjung (Pemain yang mendarat) punya kompleks di deret ini
       if (visitorId !== null) {
         for (let col of relevantColors) {
           let group = gameState.boardData.filter(c => c.color === col);
@@ -3055,7 +3063,6 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       let utilityCount = gameState.boardData.filter(c => c.isUtility && c.owner === ownerId).length;
       let ownsBoth = utilityCount === 2;
 
-      // Logika Harga:
       if (visitorHasRelevantComplex) {
         return ownsBoth ? baseRent * 10 : baseRent * 5;
       } else {
@@ -3068,14 +3075,28 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     let rent = baseRent;
     let isMono = hasMonopolyGroup(ownerId, cell);
 
+    // ATURAN FINAL: Monopoli Kompleks = 10x Lipat Sewa Dasar + Harga Rumah/Hotel
     if (cell.color) {
-      if (cell.hotels > 0) {
-        let baseRent4House = baseRent + (0.25 * 4 * housePrice);
-        rent = baseRent4House + (0.25 * cell.hotels * hotelPrice);
-      } else if (cell.houses > 0) {
-        rent = baseRent + (0.25 * cell.houses * housePrice);
-      } else if (isMono) {
-        rent = baseRent * 5;
+      if (isMono) {
+        let monoRent = baseRent * 10; // Sewa 10x lipat untuk monopoli
+        if (cell.hotels > 0) {
+          // (Monopoli) + (4 Rumah) + (Hotel)
+          rent = monoRent + (4 * housePrice) + (cell.hotels * hotelPrice);
+        } else if (cell.houses > 0) {
+          // (Monopoli) + (Rumah)
+          rent = monoRent + (cell.houses * housePrice);
+        } else {
+          rent = monoRent; // Tanah kosong tapi monopoli (10x lipat)
+        }
+      } else {
+        // Jika tidak monopoli, hitung normal (jaga-jaga jika ada paksaan rumah)
+        if (cell.hotels > 0) {
+          rent = baseRent + (4 * housePrice) + (cell.hotels * hotelPrice);
+        } else if (cell.houses > 0) {
+          rent = baseRent + (cell.houses * housePrice);
+        } else {
+          rent = baseRent;
+        }
       }
     }
     
