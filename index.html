@@ -3120,26 +3120,19 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
           
           let levelStr = '';
           if (c.mortgaged) {
-            // MENGEMBALIKAN INFO PUTARAN GADAI DENGAN INDIKATOR STATUS
             let roundsPassed = p.startCount - (c.mortgageRound || 0);
-            if (roundsPassed < 5) {
-              levelStr = `<span style="color:#e67e22; font-weight:bold;">Digadai ⚠️<br>🔒 Kunci (${roundsPassed}/5)</span>`;
-            } else {
-              levelStr = `<span style="color:#d63031; font-weight:bold;">Digadai ⚠️<br>⏳ Siap Tebus (${roundsPassed}/10)</span>`;
-            }
+            levelStr = `<span style="color:#d63031">Digadai ⚠️ (${roundsPassed}/10)</span>`;
           } else if (c.hotels > 0) {
-            levelStr = `${c.hotels} Hotel 🏨`;
+            levelStr = `${c.hotels} Hotel`;
           } else if (c.houses > 0) {
-            levelStr = `${c.houses} Rumah 🏠`;
+            levelStr = `${c.houses} Rumah`;
           } else {
-            let isMono = hasMonopolyGroup(p.id, c);
-            levelStr = isMono ? 'Komp. Penuh 👑' : 'Tanah 📄';
+            levelStr = 'Tanah';
           }
 
           let actionBtn = c.mortgaged 
             ? `<button class="btn-action-sm bg-mortgage" onclick="toggleMortgage(${cellIdx})">Tebus</button>`
-            : `<button class="btn-action-sm bg-mortgage" onclick="toggleMortgage(${cellIdx})">Gadai</button>`;
-          
+            : `<button class="btn-action-sm bg-mortgage" onclick="toggleMortgage(${cellIdx})">Gadai</button>`;          
           html += `<tr><td><strong>${c.name}</strong><br>${levelStr}</td><td>${formatRupiah(c.price)}</td><td>${actionBtn}</td></tr>`;
         });
         html += `</tbody></table>`;
@@ -3201,8 +3194,9 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
           if(owner) {
             ownerName = `${owner.avatar} ${owner.name}`;
             if(cell.mortgaged) { 
-              levelDesc = 'Gadai ⚠️'; 
-              if(badge){ badge.style.background = '#e67e22'; badge.innerHTML = `${owner.avatar} 📄 (Gadai)`; } 
+              let roundsPassed = owner.startCount - (cell.mortgageRound || 0);
+              levelDesc = `<span style="color:#d63031; font-weight:bold;">Gadai ⚠️ (${roundsPassed}/10 putaran)</span>`; 
+              if(badge){ badge.style.background = '#e67e22'; badge.innerHTML = `${owner.avatar} 📄 (${roundsPassed}/10)`; } 
             } else {
               if(cell.hotels > 0) { 
                 levelDesc = `Hotel 🏨 (${cell.hotels})`; 
