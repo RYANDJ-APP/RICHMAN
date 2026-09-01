@@ -2531,7 +2531,13 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
     { title: "Pajak Motor Nunggak", text: "Bayar pajak motor nunggak 3 tahun plus denda.", amount: -250, type: "sad", getOutCard: false },
     { title: "Sengketa Tanah", text: "Kalah sengketa tanah warisan di BPN.", amount: -300, type: "sad", getOutCard: false },
     { title: "Hajatan Tetangga", text: "Wajib kondangan hajatan tetangga 3 hari berturut-turut.", amount: -60, type: "sad", getOutCard: false },
-    { title: "Mudik Lebaran", text: "Ongkos mudik Jakarta-Surabaya naik 2 Kali lipat.", amount: -400, type: "sad", getOutCard: false }
+    { title: "Mudik Lebaran", text: "Ongkos mudik Jakarta-Surabaya naik 2 Kali lipat.", amount: -400, type: "sad", getOutCard: false },
+    { title: "Mabuk di Tempat Umum", text: "Terjaring razia karena mabuk di tempat umum. Bayar denda!", amount: -100, type: "sad", getOutCard: false },
+    { title: "Berkelahi & Merusak", text: "Anda berkelahi dan merusak fasilitas umum. Bayar ganti rugi!", amount: -150, type: "sad", getOutCard: false },
+    { title: "Menang Undian", text: "JACKPOT! Anda menang undian berhadiah utama!", amount: 1000, type: "joy", getOutCard: false },
+    { title: "Pajak Bumi dan Bangunan", text: "Bayar PBB sebesar 15% dari total nilai seluruh Rumah dan Hotel Anda.", type: "sad", getOutCard: false, isPropertyTax: true },
+    { title: "Mundur 3 Langkah", text: "Ada perbaikan jalan, Anda harus memutar dan mundur 3 langkah.", type: "sad", getOutCard: false, moveBack: 3 },
+    { title: "Teleport ke Start", text: "Akselerasi instan! Maju langsung ke START.", type: "joy", getOutCard: false, advanceToGo: true }
   ];
 
   function shuffleArray(arr){
@@ -4092,11 +4098,29 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
       if (card.getOutCard && gameState.getOutCardsPool[card.deck] <= 0) {
         card = cardList.find(c => !c.getOutCard) || cardList[0];
       }
+
       let title = isC ? "Kartu Kesempatan" : "Kartu Dana Umum";
-      let fullMessage = card.getOutCard ? `${card.text}\n\n[ANUGERAH: 1 Kartu Bebas Penjara!]` : `${card.text}\n\n${card.amount > 0 ? 'Penerimaan Kas: +' + formatRupiah(card.amount) : 'Pembayaran Upeti: -' + formatRupiah(Math.abs(card.amount))}`;
+      let dynamicAmount = card.amount || 0;
+      let dynamicText = card.text;
+      
+      // LOGIKA KARTU PAJAK BUMI & BANGUNAN (15% dari total bangunan)
+      if (card.isPropertyTax) {
+        let totalBuildingValue = 0;
+        gameState.boardData.forEach(c => {
+          if (c.owner === bot.id) {
+            totalBuildingValue += (c.houses * getHousePrice(c)) + (c.hotels * getHotelPrice(c));
+          }
+        });
+        dynamicAmount = -Math.floor(totalBuildingValue * 0.15);
+        dynamicText += `\n\n[Total Nilai Bangunan: ${formatRupiah(totalBuildingValue)}]\n[Pajak 15% Dipotong: ${formatRupiah(Math.abs(dynamicAmount))}]`;
+      }
+
+      let fullMessage = card.getOutCard ? `${dynamicText}\n\n[ANUGERAH: 1 Kartu Bebas Penjara!]` : 
+                        (card.moveBack || card.advanceToGo) ? dynamicText :
+                        `${dynamicText}\n\n${dynamicAmount >= 0 ? 'Penerimaan Kas: +' + formatRupiah(dynamicAmount) : 'Pembayaran Upeti: -' + formatRupiah(Math.abs(dynamicAmount))}`;
       
       try { playVocalExpression(card.type || 'joy'); } catch(e){}
-      let isGoodEvent = (card.amount >= 0 && !card.goToJail);
+      let isGoodEvent = (dynamicAmount >= 0 && !card.goToJail && !card.moveBack && !card.isPropertyTax);
       let modalPromiseBot = showRoyalScrollModal(title, fullMessage, isGoodEvent);
       await speak(`${title} untuk ${bot.name}, ${card.text}`, true, 'card');
       await modalPromiseBot;
@@ -4112,10 +4136,24 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
         gameState.getOutCardsPool[card.deck]--;
         bot.getOutCards[card.deck] = (bot.getOutCards[card.deck] || 0) + 1;
         await speak(`${bot.name} dapat kartu bebas penjara!`, false, 'card');
+      } else if (card.moveBack) {
+        // LOGIKA MUNDUR 3 LANGKAH
+        bot.pos = (bot.pos - card.moveBack + 40) % 40;
+        if(tokenContainers[bot.pos] && playerElements[bot.id]) tokenContainers[bot.pos].appendChild(playerElements[bot.id]);
+        updateUI();
+        await speak(`${bot.name} mundur ${card.moveBack} langkah`, false, 'arrival');
+        await handleBotLanding(bot); // Eksekusi aksi di petak baru
+      } else if (card.advanceToGo) {
+        // LOGIKA MAJU KE START (TELEPORT)
+        bot.pos = 0; bot.startCount = (bot.startCount || 0) + 1; bot.money += 200;
+        if(tokenContainers[0] && playerElements[bot.id]) tokenContainers[0].appendChild(playerElements[bot.id]);
+        updateUI();
+        await speak(`${bot.name} otomatis maju ke start dan mendapat gaji`, true, 'start');
+        await showEventModalNoSpeak("Tiba di GO!", `${bot.name} otomatis maju ke GO dan mendapat gaji ${formatRupiah(200)}`, "💵", [{text: "Lanjut", type: "btn-green"}], "#0984e3");
       } else {
-        bot.money += card.amount;
-        if(card.amount > 0) playVocalExpression('joy');
-        else playVocalExpression('sad');
+        bot.money += dynamicAmount;
+        if(dynamicAmount > 0) playVocalExpression('joy');
+        else if(dynamicAmount < 0) playVocalExpression('sad');
       }
       return;
     }
@@ -4235,13 +4273,28 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
         }
 
         let title = isC ? "Kartu Kesempatan" : "Kartu Dana Umum";
-        let fullMessage = card.getOutCard ? `${card.text}\n\n[ANUGERAH: 1 Kartu Bebas Penjara!]` : `${card.text}\n\n${card.amount > 0 ? 'Penerimaan Kas: +' + formatRupiah(card.amount) : 'Pembayaran Upeti: -' + formatRupiah(Math.abs(card.amount))}`;
+        let dynamicAmount = card.amount || 0;
+        let dynamicText = card.text;
+        
+        // LOGIKA KARTU PAJAK BUMI & BANGUNAN (15% dari total bangunan)
+        if (card.isPropertyTax) {
+          let totalBuildingValue = 0;
+          gameState.boardData.forEach(c => {
+            if (c.owner === p.id) {
+              totalBuildingValue += (c.houses * getHousePrice(c)) + (c.hotels * getHotelPrice(c));
+            }
+          });
+          dynamicAmount = -Math.floor(totalBuildingValue * 0.15);
+          dynamicText += `\n\n[Total Nilai Bangunan Anda: ${formatRupiah(totalBuildingValue)}]\n[Pajak 15% Dipotong: ${formatRupiah(Math.abs(dynamicAmount))}]`;
+        }
 
-        // Segera tayangkan popup dulu, langsung bacakan tanpa menunggu tutup
+        let fullMessage = card.getOutCard ? `${dynamicText}\n\n[ANUGERAH: 1 Kartu Bebas Penjara!]` : 
+                          (card.moveBack || card.advanceToGo) ? dynamicText :
+                          `${dynamicText}\n\n${dynamicAmount >= 0 ? 'Penerimaan Kas: +' + formatRupiah(dynamicAmount) : 'Pembayaran Upeti: -' + formatRupiah(Math.abs(dynamicAmount))}`;
+
         try { playVocalExpression(card.type || 'joy'); } catch(e) {}
-        let isGoodEvent = (card.amount >= 0 && !card.goToJail);
+        let isGoodEvent = (dynamicAmount >= 0 && !card.goToJail && !card.moveBack && !card.isPropertyTax);
         let modalPromise = showRoyalScrollModal(title, fullMessage, isGoodEvent);
-        // Langsung bacakan kartu (tanpa rupiah) selagi popup tampil
         await speak(`${title}, ${card.text}`, true, 'card');
         await modalPromise;
 
@@ -4259,8 +4312,24 @@ function openSessionModal(){ document.getElementById('sessionModal').style.displ
         } else if (card.getOutCard) { 
           gameState.getOutCardsPool[card.deck]--; 
           p.getOutCards[card.deck] = (p.getOutCards[card.deck] || 0) + 1; 
+        } else if (card.moveBack) {
+          // LOGIKA MUNDUR 3 LANGKAH
+          p.pos = (p.pos - card.moveBack + 40) % 40;
+          if(tokenContainers[p.pos] && playerElements[p.id]) tokenContainers[p.pos].appendChild(playerElements[p.id]);
+          updateUI();
+          await speak(`Anda mundur ${card.moveBack} langkah`, false, 'arrival');
+          await handleLanded(p); // Eksekusi aksi di petak baru
+        } else if (card.advanceToGo) {
+          // LOGIKA MAJU KE START (TELEPORT)
+          p.pos = 0; p.startCount = (p.startCount || 0) + 1; p.money += 200;
+          if(tokenContainers[0] && playerElements[p.id]) tokenContainers[0].appendChild(playerElements[p.id]);
+          updateUI();
+          await speak(`Anda otomatis maju ke start dan mendapat gaji`, true, 'start');
+          await showEventModalNoSpeak("Tiba di GO!", `Akselerasi ke Start dan mendapat gaji ${formatRupiah(200)}`, "💵", [{text: "Ambil Gaji", type: "btn-green"}], "#0984e3");
         } else { 
-          p.money += card.amount; 
+          p.money += dynamicAmount; 
+          if(dynamicAmount > 0) playVocalExpression('joy');
+          else if(dynamicAmount < 0) playVocalExpression('sad');
         }
         return;
       }
